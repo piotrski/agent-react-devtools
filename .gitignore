@@ -6,6 +6,9 @@ dist/
 # Bun
 bun.lock
 
+# Generated at publish time
+packages/agent-react-devtools/README.md
+
 # Examples
 examples/*/node_modules/
 examples/*/dist/
