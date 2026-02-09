@@ -1,4 +1,4 @@
-name: Changesets
+name: Release
 
 on:
   push:
@@ -35,10 +35,20 @@ jobs:
       - name: Build
         run: bun run build
 
+      - name: Unit tests
+        run: bun run test:unit
+
       - name: Create release PR or publish
+        id: changesets
         uses: changesets/action@v1
         with:
           publish: bun run release
           version: bun run version
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish canary snapshot
+        if: steps.changesets.outputs.published != 'true'
+        run: |
+          npx changeset version --snapshot canary
+          npx changeset publish --tag canary --no-git-tag
