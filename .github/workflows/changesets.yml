@@ -2,7 +2,7 @@ name: Changesets
 
 on:
   push:
-    branches: [main]
+    branches: [dev]
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
