@@ -4,7 +4,7 @@ import type {
   ComponentRenderReport,
 } from './types.js';
 import type { TreeNode } from './component-tree.js';
-import type { ProfileSummary, TimelineEntry } from './profiler.js';
+import type { ProfileSummary, TimelineEntry, CommitDetail } from './profiler.js';
 
 // ── Abbreviations for component types ──
 const TYPE_ABBREV: Record<string, string> = {
@@ -216,6 +216,21 @@ export function formatTimeline(entries: TimelineEntry[]): string {
     lines.push(
       `  #${e.index}  ${e.duration.toFixed(1)}ms  ${e.componentCount} components`,
     );
+  }
+  return lines.join('\n');
+}
+
+export function formatCommitDetail(detail: CommitDetail): string {
+  const lines: string[] = [];
+  lines.push(`Commit #${detail.index}  ${detail.duration.toFixed(1)}ms  ${detail.totalComponents} components`);
+  lines.push('');
+  for (const c of detail.components) {
+    const causes = c.causes.length > 0 ? c.causes.join(', ') : '?';
+    lines.push(`  ${pad(c.displayName, 24)} self:${c.selfDuration.toFixed(1)}ms  total:${c.actualDuration.toFixed(1)}ms  ${causes}`);
+  }
+  const hidden = detail.totalComponents - detail.components.length;
+  if (hidden > 0) {
+    lines.push(`  ... ${hidden} more (use --limit to show more)`);
   }
   return lines.join('\n');
 }

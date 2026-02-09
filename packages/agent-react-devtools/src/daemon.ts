@@ -218,6 +218,14 @@ class Daemon {
             data: this.profiler.getTimeline(cmd.limit),
           };
 
+        case 'profile-commit': {
+          const detail = this.profiler.getCommitDetails(cmd.index, this.tree, cmd.limit);
+          if (!detail) {
+            return { ok: false, error: `Commit #${cmd.index} not found` };
+          }
+          return { ok: true, data: detail };
+        }
+
         default:
           return { ok: false, error: `Unknown command: ${(cmd as any).type}` };
       }

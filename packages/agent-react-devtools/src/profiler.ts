@@ -21,6 +21,20 @@ export interface TimelineEntry {
   componentCount: number;
 }
 
+export interface CommitDetail {
+  index: number;
+  timestamp: number;
+  duration: number;
+  components: Array<{
+    id: number;
+    displayName: string;
+    actualDuration: number;
+    selfDuration: number;
+    causes: RenderCause[];
+  }>;
+  totalComponents: number;
+}
+
 export class Profiler {
   private session: ProfilingSession | null = null;
   /** Display names captured during profiling (survives unmounts) */
@@ -238,6 +252,38 @@ export class Profiler {
     return this.getAllReports(tree)
       .sort((a, b) => b.renderCount - a.renderCount)
       .slice(0, limit);
+  }
+
+  getCommitDetails(index: number, tree: ComponentTree, limit = 10): CommitDetail | null {
+    if (!this.session) return null;
+    if (index < 0 || index >= this.session.commits.length) return null;
+
+    const commit = this.session.commits[index];
+    const components: CommitDetail['components'] = [];
+
+    for (const [id, actualDuration] of commit.fiberActualDurations) {
+      const selfDuration = commit.fiberSelfDurations.get(id) || 0;
+      const desc = commit.changeDescriptions.get(id);
+      components.push({
+        id,
+        displayName: tree.getNode(id)?.displayName || this.displayNames.get(id) || `Component#${id}`,
+        actualDuration,
+        selfDuration,
+        causes: desc ? describeCauses(desc) : [],
+      });
+    }
+
+    components.sort((a, b) => b.selfDuration - a.selfDuration);
+
+    const totalCount = components.length;
+
+    return {
+      index,
+      timestamp: commit.timestamp,
+      duration: commit.duration,
+      components: limit > 0 ? components.slice(0, limit) : components,
+      totalComponents: totalCount,
+    };
   }
 
   getTimeline(limit?: number): TimelineEntry[] {
