@@ -1,8 +1,10 @@
 import type {
   StatusInfo,
   InspectedElement,
+  ComponentRenderReport,
 } from './types.js';
 import type { TreeNode } from './component-tree.js';
+import type { ProfileSummary, TimelineEntry } from './profiler.js';
 
 // ── Abbreviations for component types ──
 const TYPE_ABBREV: Record<string, string> = {
@@ -148,7 +150,85 @@ export function formatStatus(status: StatusInfo): string {
   return lines.join('\n');
 }
 
+export function formatProfileSummary(summary: ProfileSummary): string {
+  const lines: string[] = [];
+  const durSec = (summary.duration / 1000).toFixed(1);
+  lines.push(
+    `Profile "${summary.name}" (${durSec}s, ${summary.commitCount} commits)`,
+  );
+
+  if (summary.componentRenderCounts.length > 0) {
+    lines.push('');
+    lines.push('Top renders:');
+    for (const c of summary.componentRenderCounts.slice(0, 10)) {
+      const name = c.displayName || `#${c.id}`;
+      lines.push(`  ${name}  ${c.count} renders`);
+    }
+  }
+
+  return lines.join('\n');
+}
+
+export function formatProfileReport(report: ComponentRenderReport, label?: string): string {
+  const lines: string[] = [];
+  const ref = label || `#${report.id}`;
+  lines.push(`${ref} "${report.displayName}"`);
+  lines.push(
+    `renders:${report.renderCount}  avg:${report.avgDuration.toFixed(1)}ms  max:${report.maxDuration.toFixed(1)}ms  total:${report.totalDuration.toFixed(1)}ms`,
+  );
+  if (report.causes.length > 0) {
+    lines.push(`causes: ${report.causes.join(', ')}`);
+  }
+  return lines.join('\n');
+}
+
+export function formatSlowest(reports: ComponentRenderReport[]): string {
+  if (reports.length === 0) return 'No profiling data';
+
+  const lines: string[] = ['Slowest (by avg render time):'];
+  for (const r of reports) {
+    const cause = r.causes[0] || '?';
+    lines.push(
+      `  ${pad(r.displayName, 20)} avg:${r.avgDuration.toFixed(1)}ms  max:${r.maxDuration.toFixed(1)}ms  renders:${r.renderCount}  cause:${cause}`,
+    );
+  }
+  return lines.join('\n');
+}
+
+export function formatRerenders(reports: ComponentRenderReport[]): string {
+  if (reports.length === 0) return 'No profiling data';
+
+  const lines: string[] = ['Most re-renders:'];
+  for (const r of reports) {
+    const cause = r.causes[0] || '?';
+    lines.push(
+      `  ${pad(r.displayName, 20)} ${r.renderCount} renders — ${cause}`,
+    );
+  }
+  return lines.join('\n');
+}
+
+export function formatTimeline(entries: TimelineEntry[]): string {
+  if (entries.length === 0) return 'No profiling data';
+
+  const lines: string[] = ['Commit timeline:'];
+  for (const e of entries) {
+    lines.push(
+      `  #${e.index}  ${e.duration.toFixed(1)}ms  ${e.componentCount} components`,
+    );
+  }
+  return lines.join('\n');
+}
+
 // ── Helpers ──
+
+function formatValue(obj: unknown): string {
+  try {
+    return JSON.stringify(obj, replacer, 0) || 'undefined';
+  } catch {
+    return String(obj);
+  }
+}
 
 function formatCompactValue(val: unknown): string | undefined {
   if (val === undefined) return undefined;

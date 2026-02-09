@@ -5,9 +5,14 @@ import {
   formatSearchResults,
   formatCount,
   formatStatus,
+  formatProfileReport,
+  formatSlowest,
+  formatRerenders,
+  formatTimeline,
 } from '../formatters.js';
 import type { TreeNode } from '../component-tree.js';
-import type { InspectedElement, StatusInfo } from '../types.js';
+import type { InspectedElement, StatusInfo, ComponentRenderReport } from '../types.js';
+import type { TimelineEntry } from '../profiler.js';
 
 describe('formatTree', () => {
   it('should format empty tree', () => {
@@ -114,5 +119,71 @@ describe('formatStatus', () => {
     expect(result).toContain('8097');
     expect(result).toContain('1 connected');
     expect(result).toContain('47 components');
+  });
+});
+
+describe('formatProfileReport', () => {
+  it('should format a render report', () => {
+    const report: ComponentRenderReport = {
+      id: 5,
+      displayName: 'UserProfile',
+      renderCount: 12,
+      totalDuration: 540,
+      avgDuration: 45,
+      maxDuration: 120,
+      causes: ['props-changed', 'state-changed'],
+    };
+
+    const result = formatProfileReport(report, '@c5');
+    expect(result).toContain('@c5 "UserProfile"');
+    expect(result).toContain('renders:12');
+    expect(result).toContain('avg:45.0ms');
+    expect(result).toContain('max:120.0ms');
+    expect(result).toContain('props-changed');
+  });
+});
+
+describe('formatSlowest', () => {
+  it('should format empty data', () => {
+    expect(formatSlowest([])).toContain('No profiling data');
+  });
+
+  it('should format slowest components', () => {
+    const reports: ComponentRenderReport[] = [
+      { id: 1, displayName: 'SlowComp', renderCount: 5, totalDuration: 250, avgDuration: 50, maxDuration: 100, causes: ['props-changed'] },
+      { id: 2, displayName: 'FastComp', renderCount: 10, totalDuration: 100, avgDuration: 10, maxDuration: 20, causes: ['state-changed'] },
+    ];
+
+    const result = formatSlowest(reports);
+    expect(result).toContain('Slowest');
+    expect(result).toContain('SlowComp');
+    expect(result).toContain('FastComp');
+  });
+});
+
+describe('formatRerenders', () => {
+  it('should format rerender data', () => {
+    const reports: ComponentRenderReport[] = [
+      { id: 1, displayName: 'Chatty', renderCount: 50, totalDuration: 100, avgDuration: 2, maxDuration: 5, causes: ['parent-rendered'] },
+    ];
+
+    const result = formatRerenders(reports);
+    expect(result).toContain('50 renders');
+    expect(result).toContain('parent-rendered');
+  });
+});
+
+describe('formatTimeline', () => {
+  it('should format timeline entries', () => {
+    const entries: TimelineEntry[] = [
+      { index: 0, timestamp: 1000, duration: 12.5, componentCount: 5 },
+      { index: 1, timestamp: 2000, duration: 8.3, componentCount: 3 },
+    ];
+
+    const result = formatTimeline(entries);
+    expect(result).toContain('#0');
+    expect(result).toContain('12.5ms');
+    expect(result).toContain('#1');
+    expect(result).toContain('8.3ms');
   });
 });
