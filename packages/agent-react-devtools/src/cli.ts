@@ -41,7 +41,10 @@ Profiling:
   profile slow [--limit N]      Slowest components (by avg)
   profile rerenders [--limit N] Most re-rendered components
   profile timeline [--limit N]  Commit timeline
-  profile commit <N | #N> [--limit N]  Detail for specific commit`;
+  profile commit <N | #N> [--limit N]  Detail for specific commit
+
+MCP:
+  serve-mcp                     Start MCP server (stdio)`;
 }
 
 function parseArgs(argv: string[]): {
@@ -127,6 +130,14 @@ async function main(): Promise<void> {
         console.log('Daemon is not running (stale info)');
         process.exit(1);
       }
+      return;
+    }
+
+    // ── MCP server ──
+    if (cmd0 === 'serve-mcp') {
+      // Dynamic import to avoid loading MCP deps on every CLI call
+      const { startMcpServer } = await import('./mcp-server.js');
+      await startMcpServer();
       return;
     }
 
