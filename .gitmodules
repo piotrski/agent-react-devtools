@@ -1,0 +1,3 @@
+[submodule "vendor/react"]
+	path = vendor/react
+	url = https://github.com/facebook/react.git
