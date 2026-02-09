@@ -27,6 +27,7 @@ interface PendingInspection {
 interface PendingProfilingCollect {
   resolve: () => void;
   timer: ReturnType<typeof setTimeout>;
+  remaining: number;
 }
 
 export class DevToolsBridge {
@@ -154,13 +155,14 @@ export class DevToolsBridge {
       });
     }
 
+    const expected = this.rendererIds.size;
     return new Promise<void>((resolve) => {
       const timer = setTimeout(() => {
         this.pendingProfilingCollect = null;
         resolve();
       }, 5000);
 
-      this.pendingProfilingCollect = { resolve, timer };
+      this.pendingProfilingCollect = { resolve, timer, remaining: expected };
     });
   }
 
@@ -316,12 +318,15 @@ export class DevToolsBridge {
     // We forward it to the profiler for processing.
     this.profiler.processProfilingData(payload);
 
-    // Resolve the pending collect promise now that data has arrived
+    // Resolve once all expected renderer responses have arrived
     if (this.pendingProfilingCollect) {
-      clearTimeout(this.pendingProfilingCollect.timer);
-      const pending = this.pendingProfilingCollect;
-      this.pendingProfilingCollect = null;
-      pending.resolve();
+      this.pendingProfilingCollect.remaining--;
+      if (this.pendingProfilingCollect.remaining <= 0) {
+        clearTimeout(this.pendingProfilingCollect.timer);
+        const pending = this.pendingProfilingCollect;
+        this.pendingProfilingCollect = null;
+        pending.resolve();
+      }
     }
   }
 
