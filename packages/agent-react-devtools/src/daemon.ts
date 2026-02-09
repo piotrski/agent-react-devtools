@@ -2,6 +2,7 @@ import net from 'node:net';
 import fs from 'node:fs';
 import path from 'node:path';
 import { DevToolsBridge } from './devtools-bridge.js';
+import { ComponentTree } from './component-tree.js';
 import type { IpcCommand, IpcResponse, DaemonInfo, StatusInfo } from './types.js';
 
 const DEFAULT_STATE_DIR = path.join(
@@ -22,12 +23,14 @@ function getDaemonInfoPath(): string {
 class Daemon {
   private ipcServer: net.Server | null = null;
   private bridge: DevToolsBridge;
+  private tree: ComponentTree;
   private port: number;
   private startedAt = Date.now();
 
   constructor(port: number) {
     this.port = port;
-    this.bridge = new DevToolsBridge(port);
+    this.tree = new ComponentTree();
+    this.bridge = new DevToolsBridge(port, this.tree);
   }
 
   async start(): Promise<void> {
@@ -121,10 +124,42 @@ class Daemon {
               daemonRunning: true,
               port: this.port,
               connectedApps: this.bridge.getConnectedAppCount(),
-              componentCount: 0,
+              componentCount: this.tree.getComponentCount(),
               profilingActive: false,
               uptime: Date.now() - this.startedAt,
             } satisfies StatusInfo,
+          };
+
+        case 'get-tree':
+          return {
+            ok: true,
+            data: this.tree.getTree(cmd.depth),
+          };
+
+        case 'get-component': {
+          const resolvedId = this.tree.resolveId(cmd.id);
+          if (resolvedId === undefined) {
+            return { ok: false, error: `Component ${cmd.id} not found` };
+          }
+          const element = await this.bridge.inspectElement(resolvedId);
+          if (!element) {
+            return { ok: false, error: `Component ${cmd.id} not found` };
+          }
+          // Include the label if the request used one
+          const label = typeof cmd.id === 'string' ? cmd.id : undefined;
+          return { ok: true, data: element, label };
+        }
+
+        case 'find':
+          return {
+            ok: true,
+            data: this.tree.findByName(cmd.name, cmd.exact),
+          };
+
+        case 'count':
+          return {
+            ok: true,
+            data: this.tree.getCountByType(),
           };
 
         default:

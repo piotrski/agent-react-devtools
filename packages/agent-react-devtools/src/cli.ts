@@ -5,7 +5,14 @@ import {
   readDaemonInfo,
   setStateDir,
 } from './daemon-client.js';
-import type { StatusInfo } from './types.js';
+import {
+  formatTree,
+  formatComponent,
+  formatSearchResults,
+  formatCount,
+  formatStatus,
+} from './formatters.js';
+import type { IpcCommand } from './types.js';
 
 function usage(): string {
   return `Usage: devtools <command> [options]
@@ -13,7 +20,13 @@ function usage(): string {
 Daemon:
   start [--port 8097]           Start daemon
   stop                          Stop daemon
-  status                        Show daemon status`;
+  status                        Show daemon status
+
+Components:
+  get tree [--depth N]          Component hierarchy
+  get component <@c1 | id>     Props, state, hooks
+  find <name> [--exact]         Search by display name
+  count                         Component count by type`;
 }
 
 function parseArgs(argv: string[]): {
@@ -47,20 +60,6 @@ function parseArgs(argv: string[]): {
   return { command, flags };
 }
 
-function formatStatus(status: StatusInfo): string {
-  const lines: string[] = [];
-  lines.push(`Daemon: running (port ${status.port})`);
-  lines.push(
-    `Apps: ${status.connectedApps} connected, ${status.componentCount} components`,
-  );
-  if (status.profilingActive) {
-    lines.push('Profiling: active');
-  }
-  const upSec = Math.round(status.uptime / 1000);
-  lines.push(`Uptime: ${upSec}s`);
-  return lines.join('\n');
-}
-
 async function main(): Promise<void> {
   const { command, flags } = parseArgs(process.argv.slice(2));
 
@@ -75,6 +74,7 @@ async function main(): Promise<void> {
   }
 
   const cmd0 = command[0];
+  const cmd1 = command[1];
 
   try {
     // ── Daemon management ──
@@ -83,7 +83,7 @@ async function main(): Promise<void> {
       await ensureDaemon(port);
       const resp = await sendCommand({ type: 'status' });
       if (resp.ok) {
-        console.log(formatStatus(resp.data as StatusInfo));
+        console.log(formatStatus(resp.data as any));
       }
       return;
     }
@@ -103,13 +103,81 @@ async function main(): Promise<void> {
       try {
         const resp = await sendCommand({ type: 'status' });
         if (resp.ok) {
-          console.log(formatStatus(resp.data as StatusInfo));
+          console.log(formatStatus(resp.data as any));
         } else {
           console.error(resp.error);
           process.exit(1);
         }
       } catch {
         console.log('Daemon is not running (stale info)');
+        process.exit(1);
+      }
+      return;
+    }
+
+    // ── All other commands require the daemon ──
+    await ensureDaemon();
+
+    // ── Component inspection ──
+    if (cmd0 === 'get' && cmd1 === 'tree') {
+      const depth = flags['depth']
+        ? parseInt(flags['depth'] as string, 10)
+        : undefined;
+      const ipcCmd: IpcCommand = { type: 'get-tree', depth };
+      const resp = await sendCommand(ipcCmd);
+      if (resp.ok) {
+        console.log(formatTree(resp.data as any));
+      } else {
+        console.error(resp.error);
+        process.exit(1);
+      }
+      return;
+    }
+
+    if (cmd0 === 'get' && cmd1 === 'component') {
+      const raw = command[2];
+      if (!raw) {
+        console.error('Usage: devtools get component <@c1 | id>');
+        process.exit(1);
+      }
+      const id: number | string = raw.startsWith('@') ? raw : parseInt(raw, 10);
+      if (typeof id === 'number' && isNaN(id)) {
+        console.error('Usage: devtools get component <@c1 | id>');
+        process.exit(1);
+      }
+      const resp = await sendCommand({ type: 'get-component', id });
+      if (resp.ok) {
+        console.log(formatComponent(resp.data as any, resp.label));
+      } else {
+        console.error(resp.error);
+        process.exit(1);
+      }
+      return;
+    }
+
+    if (cmd0 === 'find') {
+      const name = command[1];
+      if (!name) {
+        console.error('Usage: devtools find <name> [--exact]');
+        process.exit(1);
+      }
+      const exact = flags['exact'] === true;
+      const resp = await sendCommand({ type: 'find', name, exact });
+      if (resp.ok) {
+        console.log(formatSearchResults(resp.data as any));
+      } else {
+        console.error(resp.error);
+        process.exit(1);
+      }
+      return;
+    }
+
+    if (cmd0 === 'count') {
+      const resp = await sendCommand({ type: 'count' });
+      if (resp.ok) {
+        console.log(formatCount(resp.data as any));
+      } else {
+        console.error(resp.error);
         process.exit(1);
       }
       return;
