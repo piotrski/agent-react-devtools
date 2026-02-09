@@ -246,7 +246,9 @@ export class ComponentTree {
         }
 
         case TREE_OPERATION_REMOVE_ROOT: {
-          i += 1;
+          const rootId = operations[i + 1];
+          this.removeNode(rootId);
+          i += 2;
           break;
         }
 
