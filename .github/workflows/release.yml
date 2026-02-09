@@ -53,5 +53,8 @@ jobs:
       - name: Publish canary snapshot
         if: steps.changesets.outputs.published != 'true'
         run: |
+          git checkout ${{ github.sha }}
+          bun install
+          bun run build
           npx changeset version --snapshot canary
           npx changeset publish --tag canary --no-git-tag
