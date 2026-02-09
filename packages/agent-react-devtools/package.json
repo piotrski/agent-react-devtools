@@ -14,6 +14,11 @@
     "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/piotrski/agent-react-devtools.git",
+    "directory": "packages/agent-react-devtools"
+  },
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^22.0.0",
