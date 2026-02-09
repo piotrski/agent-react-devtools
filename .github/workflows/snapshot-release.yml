@@ -10,6 +10,10 @@ jobs:
   snapshot:
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: read
+      id-token: write
+
     steps:
       - uses: actions/checkout@v4
 
@@ -26,9 +30,16 @@ jobs:
       - name: Unit tests
         run: bun run test:unit
 
+      - name: Setup npm auth
+        run: |
+          echo "//registry.npmjs.org/:_authToken=\${NODE_AUTH_TOKEN}" > .npmrc
+        env:
+          NODE_AUTH_TOKEN: ""
+
       - name: Publish snapshot to npm
         run: |
           npx changeset version --snapshot canary
-          npx changeset publish --tag canary
+          npx changeset publish --tag canary --no-git-tag
         env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true
