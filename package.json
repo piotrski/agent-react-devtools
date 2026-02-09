@@ -1,0 +1,20 @@
+{
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "examples/*"
+  ],
+  "scripts": {
+    "build": "bun run --filter agent-react-devtools build",
+    "test": "bun run --filter agent-react-devtools test && bun run --filter e2e-tests test",
+    "test:unit": "bun run --filter agent-react-devtools test",
+    "test:e2e": "bun run --filter e2e-tests test",
+    "typecheck": "bun run --filter agent-react-devtools typecheck",
+    "changeset": "changeset",
+    "version": "changeset version",
+    "release": "bun run build && changeset publish"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.27.0"
+  }
+}

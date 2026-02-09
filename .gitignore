@@ -1,0 +1,11 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.DS_Store
+
+# Bun
+bun.lock
+
+# Examples
+examples/*/node_modules/
+examples/*/dist/
