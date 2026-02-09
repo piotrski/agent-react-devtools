@@ -30,16 +30,11 @@ jobs:
       - name: Unit tests
         run: bun run test:unit
 
-      - name: Setup npm auth
-        run: |
-          echo "//registry.npmjs.org/:_authToken=\${NODE_AUTH_TOKEN}" > .npmrc
-        env:
-          NODE_AUTH_TOKEN: ""
-
       - name: Publish snapshot to npm
         run: |
+          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > .npmrc
           npx changeset version --snapshot canary
           npx changeset publish --tag canary --no-git-tag
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: true

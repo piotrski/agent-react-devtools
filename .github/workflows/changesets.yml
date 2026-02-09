@@ -25,6 +25,11 @@ jobs:
       - name: Install dependencies
         run: bun install
 
+      - name: Setup npm auth
+        run: echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > .npmrc
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
       - name: Build
         run: bun run build
 
