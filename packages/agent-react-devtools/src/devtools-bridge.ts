@@ -1,5 +1,6 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import type { ComponentTree } from './component-tree.js';
+import type { Profiler } from './profiler.js';
 import type { InspectedElement } from './types.js';
 
 /**
@@ -23,19 +24,28 @@ interface PendingInspection {
   timer: ReturnType<typeof setTimeout>;
 }
 
+interface PendingProfilingCollect {
+  resolve: () => void;
+  timer: ReturnType<typeof setTimeout>;
+  remaining: number;
+}
+
 export class DevToolsBridge {
   private wss: WebSocketServer | null = null;
   private connections = new Set<WebSocket>();
   private port: number;
   private tree: ComponentTree;
+  private profiler: Profiler;
   private pendingInspections = new Map<number, PendingInspection>();
+  private pendingProfilingCollect: PendingProfilingCollect | null = null;
   private rendererIds = new Set<number>();
   /** Track which root fiber IDs belong to each WebSocket connection */
   private connectionRoots = new Map<WebSocket, Set<number>>();
 
-  constructor(port: number, tree: ComponentTree) {
+  constructor(port: number, tree: ComponentTree, profiler: Profiler) {
     this.port = port;
     this.tree = tree;
+    this.profiler = profiler;
   }
 
   async start(): Promise<void> {
@@ -115,6 +125,47 @@ export class DevToolsBridge {
     });
   }
 
+  startProfiling(): void {
+    this.sendToAll({
+      event: 'startProfiling',
+      payload: { recordChangeDescriptions: true },
+    });
+  }
+
+  /**
+   * Stop profiling and request data from each renderer.
+   * Returns a promise that resolves when profilingData arrives (or 5s timeout).
+   */
+  stopProfilingAndCollect(): Promise<void> {
+    this.sendToAll({
+      event: 'stopProfiling',
+      payload: undefined,
+    });
+
+    // If no renderers known, resolve immediately
+    if (this.rendererIds.size === 0) {
+      return Promise.resolve();
+    }
+
+    // Request profiling data from each renderer
+    for (const rendererID of this.rendererIds) {
+      this.sendToAll({
+        event: 'getProfilingData',
+        payload: { rendererID },
+      });
+    }
+
+    const expected = this.rendererIds.size;
+    return new Promise<void>((resolve) => {
+      const timer = setTimeout(() => {
+        this.pendingProfilingCollect = null;
+        resolve();
+      }, 5000);
+
+      this.pendingProfilingCollect = { resolve, timer, remaining: expected };
+    });
+  }
+
   private handleMessage(ws: WebSocket, msg: DevToolsMessage): void {
     switch (msg.event) {
       case 'backendInitialized':
@@ -138,6 +189,10 @@ export class DevToolsBridge {
 
       case 'inspectedElement':
         this.handleInspectedElement(msg.payload);
+        break;
+
+      case 'profilingData':
+        this.handleProfilingData(msg.payload);
         break;
 
       case 'renderer': {
@@ -185,7 +240,14 @@ export class DevToolsBridge {
       }
       roots.add(rootFiberId);
     }
-    this.tree.applyOperations(operations);
+    const added = this.tree.applyOperations(operations);
+
+    // Cache display names during profiling so unmounted components are still identifiable
+    if (this.profiler.isActive()) {
+      for (const node of added) {
+        this.profiler.trackComponent(node.id, node.displayName);
+      }
+    }
   }
 
   private cleanupConnection(ws: WebSocket): void {
@@ -249,6 +311,23 @@ export class DevToolsBridge {
     };
 
     pending.resolve(inspected);
+  }
+
+  private handleProfilingData(payload: unknown): void {
+    // React DevTools sends profiling data as a complex nested structure.
+    // We forward it to the profiler for processing.
+    this.profiler.processProfilingData(payload);
+
+    // Resolve once all expected renderer responses have arrived
+    if (this.pendingProfilingCollect) {
+      this.pendingProfilingCollect.remaining--;
+      if (this.pendingProfilingCollect.remaining <= 0) {
+        clearTimeout(this.pendingProfilingCollect.timer);
+        const pending = this.pendingProfilingCollect;
+        this.pendingProfilingCollect = null;
+        pending.resolve();
+      }
+    }
   }
 
   private sendTo(ws: WebSocket, msg: DevToolsMessage): void {

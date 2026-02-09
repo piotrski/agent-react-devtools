@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DevToolsBridge } from './devtools-bridge.js';
 import { ComponentTree } from './component-tree.js';
+import { Profiler } from './profiler.js';
 import type { IpcCommand, IpcResponse, DaemonInfo, StatusInfo } from './types.js';
 
 const DEFAULT_STATE_DIR = path.join(
@@ -24,13 +25,15 @@ class Daemon {
   private ipcServer: net.Server | null = null;
   private bridge: DevToolsBridge;
   private tree: ComponentTree;
+  private profiler: Profiler;
   private port: number;
   private startedAt = Date.now();
 
   constructor(port: number) {
     this.port = port;
     this.tree = new ComponentTree();
-    this.bridge = new DevToolsBridge(port, this.tree);
+    this.profiler = new Profiler();
+    this.bridge = new DevToolsBridge(port, this.tree, this.profiler);
   }
 
   async start(): Promise<void> {
@@ -125,7 +128,7 @@ class Daemon {
               port: this.port,
               connectedApps: this.bridge.getConnectedAppCount(),
               componentCount: this.tree.getComponentCount(),
-              profilingActive: false,
+              profilingActive: this.profiler.isActive(),
               uptime: Date.now() - this.startedAt,
             } satisfies StatusInfo,
           };
@@ -161,6 +164,67 @@ class Daemon {
             ok: true,
             data: this.tree.getCountByType(),
           };
+
+        case 'profile-start':
+          this.profiler.start(cmd.name);
+          // Snapshot existing component names so they survive unmounts
+          for (const id of this.tree.getAllNodeIds()) {
+            const node = this.tree.getNode(id);
+            if (node) this.profiler.trackComponent(id, node.displayName);
+          }
+          this.bridge.startProfiling();
+          return { ok: true, data: 'Profiling started' };
+
+        case 'profile-stop': {
+          await this.bridge.stopProfilingAndCollect();
+          const session = this.profiler.stop(this.tree);
+          if (!session) {
+            return { ok: false, error: 'No active profiling session' };
+          }
+          return { ok: true, data: session };
+        }
+
+        case 'profile-report': {
+          const resolvedCompId = this.tree.resolveId(cmd.componentId);
+          if (resolvedCompId === undefined) {
+            return { ok: false, error: `Component ${cmd.componentId} not found` };
+          }
+          const report = this.profiler.getReport(resolvedCompId, this.tree);
+          if (!report) {
+            return {
+              ok: false,
+              error: `No profiling data for component ${cmd.componentId}`,
+            };
+          }
+          const compLabel = typeof cmd.componentId === 'string' ? cmd.componentId : undefined;
+          return { ok: true, data: report, label: compLabel };
+        }
+
+        case 'profile-slow':
+          return {
+            ok: true,
+            data: this.profiler.getSlowest(this.tree, cmd.limit),
+          };
+
+        case 'profile-rerenders':
+          return {
+            ok: true,
+            data: this.profiler.getMostRerenders(this.tree, cmd.limit),
+          };
+
+        case 'profile-timeline':
+          return {
+            ok: true,
+            data: this.profiler.getTimeline(cmd.limit),
+          };
+
+        case 'profile-commit': {
+          const detail = this.profiler.getCommitDetails(cmd.index, this.tree, cmd.limit);
+          if (!detail) {
+            return { ok: false, error: `Commit #${cmd.index} not found` };
+          }
+          return { ok: true, data: detail };
+        }
 
         default:
           return { ok: false, error: `Unknown command: ${(cmd as any).type}` };

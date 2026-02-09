@@ -11,6 +11,12 @@ import {
   formatSearchResults,
   formatCount,
   formatStatus,
+  formatProfileSummary,
+  formatProfileReport,
+  formatSlowest,
+  formatRerenders,
+  formatTimeline,
+  formatCommitDetail,
 } from './formatters.js';
 import type { IpcCommand } from './types.js';
 
@@ -26,7 +32,16 @@ Components:
   get tree [--depth N]          Component hierarchy
   get component <@c1 | id>     Props, state, hooks
   find <name> [--exact]         Search by display name
-  count                         Component count by type`;
+  count                         Component count by type
+
+Profiling:
+  profile start [name]          Start profiling session
+  profile stop                  Stop profiling, collect data
+  profile report <@c1 | id>    Render report for component
+  profile slow [--limit N]      Slowest components (by avg)
+  profile rerenders [--limit N] Most re-rendered components
+  profile timeline [--limit N]  Commit timeline
+  profile commit <N | #N> [--limit N]  Detail for specific commit`;
 }
 
 function parseArgs(argv: string[]): {
@@ -176,6 +191,109 @@ async function main(): Promise<void> {
       const resp = await sendCommand({ type: 'count' });
       if (resp.ok) {
         console.log(formatCount(resp.data as any));
+      } else {
+        console.error(resp.error);
+        process.exit(1);
+      }
+      return;
+    }
+
+    // ── Profiling ──
+    if (cmd0 === 'profile' && cmd1 === 'start') {
+      const name = command[2];
+      const resp = await sendCommand({ type: 'profile-start', name });
+      if (resp.ok) {
+        console.log(resp.data);
+      } else {
+        console.error(resp.error);
+        process.exit(1);
+      }
+      return;
+    }
+
+    if (cmd0 === 'profile' && cmd1 === 'stop') {
+      const resp = await sendCommand({ type: 'profile-stop' });
+      if (resp.ok) {
+        console.log(formatProfileSummary(resp.data as any));
+      } else {
+        console.error(resp.error);
+        process.exit(1);
+      }
+      return;
+    }
+
+    if (cmd0 === 'profile' && cmd1 === 'report') {
+      const raw = command[2];
+      if (!raw) {
+        console.error('Usage: devtools profile report <@c1 | id>');
+        process.exit(1);
+      }
+      const componentId: number | string = raw.startsWith('@') ? raw : parseInt(raw, 10);
+      if (typeof componentId === 'number' && isNaN(componentId)) {
+        console.error('Usage: devtools profile report <@c1 | id>');
+        process.exit(1);
+      }
+      const resp = await sendCommand({ type: 'profile-report', componentId });
+      if (resp.ok) {
+        console.log(formatProfileReport(resp.data as any, resp.label));
+      } else {
+        console.error(resp.error);
+        process.exit(1);
+      }
+      return;
+    }
+
+    if (cmd0 === 'profile' && cmd1 === 'slow') {
+      const limit = flags['limit'] ? parseInt(flags['limit'] as string, 10) : undefined;
+      const resp = await sendCommand({ type: 'profile-slow', limit });
+      if (resp.ok) {
+        console.log(formatSlowest(resp.data as any));
+      } else {
+        console.error(resp.error);
+        process.exit(1);
+      }
+      return;
+    }
+
+    if (cmd0 === 'profile' && cmd1 === 'rerenders') {
+      const limit = flags['limit'] ? parseInt(flags['limit'] as string, 10) : undefined;
+      const resp = await sendCommand({ type: 'profile-rerenders', limit });
+      if (resp.ok) {
+        console.log(formatRerenders(resp.data as any));
+      } else {
+        console.error(resp.error);
+        process.exit(1);
+      }
+      return;
+    }
+
+    if (cmd0 === 'profile' && cmd1 === 'commit') {
+      const raw = command[2];
+      if (!raw) {
+        console.error('Usage: devtools profile commit <N | #N>');
+        process.exit(1);
+      }
+      const index = parseInt(raw.replace(/^#/, ''), 10);
+      if (isNaN(index)) {
+        console.error('Usage: devtools profile commit <N | #N>');
+        process.exit(1);
+      }
+      const limit = flags['limit'] ? parseInt(flags['limit'] as string, 10) : undefined;
+      const resp = await sendCommand({ type: 'profile-commit', index, limit });
+      if (resp.ok) {
+        console.log(formatCommitDetail(resp.data as any));
+      } else {
+        console.error(resp.error);
+        process.exit(1);
+      }
+      return;
+    }
+
+    if (cmd0 === 'profile' && cmd1 === 'timeline') {
+      const limit = flags['limit'] ? parseInt(flags['limit'] as string, 10) : undefined;
+      const resp = await sendCommand({ type: 'profile-timeline', limit });
+      if (resp.ok) {
+        console.log(formatTimeline(resp.data as any));
       } else {
         console.error(resp.error);
         process.exit(1);
