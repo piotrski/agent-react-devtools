@@ -7,7 +7,7 @@
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": ["example-react-app"],
+  "ignore": ["example-vite-app", "example-expo-app"],
   "snapshot": {
     "useCalculatedVersion": true
   }

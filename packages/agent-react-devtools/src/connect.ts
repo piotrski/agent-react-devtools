@@ -44,28 +44,32 @@ const isProd =
 export const ready: Promise<void> = isSSR || isProd ? noop() : connect();
 
 async function connect(): Promise<void> {
-  const port = getPort();
-  const host = getHost();
-
-  // Remove Vite's plugin-react hook stub so react-devtools-core can install the full hook
   try {
-    delete (window as any).__REACT_DEVTOOLS_GLOBAL_HOOK__;
-  } catch {
-    // Property may be non-configurable (browser extension) — ignore
-  }
+    const port = getPort();
+    const host = getHost();
 
-  const { initialize, connectToDevTools } = await import('react-devtools-core');
-  initialize();
-
-  return new Promise<void>((resolve) => {
+    // Remove Vite's plugin-react hook stub so react-devtools-core can install the full hook
     try {
-      const ws = new WebSocket(`ws://${host}:${port}`);
-      connectToDevTools({ port, websocket: ws });
-      ws.addEventListener('open', () => resolve());
-      ws.addEventListener('error', () => resolve());
-      setTimeout(resolve, 2000);
+      delete (window as any).__REACT_DEVTOOLS_GLOBAL_HOOK__;
     } catch {
-      resolve();
+      // Property may be non-configurable (browser extension) — ignore
     }
-  });
+
+    const { initialize, connectToDevTools } = await import('react-devtools-core');
+    initialize();
+
+    return new Promise<void>((resolve) => {
+      try {
+        const ws = new WebSocket(`ws://${host}:${port}`);
+        connectToDevTools({ port, websocket: ws });
+        ws.addEventListener('open', () => resolve());
+        ws.addEventListener('error', () => resolve());
+        setTimeout(resolve, 2000);
+      } catch {
+        resolve();
+      }
+    });
+  } catch {
+    // react-devtools-core not installed or other error — silently skip
+  }
 }
