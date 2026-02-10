@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, writeFileSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, mkdirSync, readFileSync, rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { detectFramework, runInit } from '../init.js';
@@ -106,7 +106,7 @@ describe('runInit', () => {
     expect(content).toBe(original);
   });
 
-  it('patches Next.js app/layout.tsx', async () => {
+  it('patches Next.js App Router with use-client wrapper', async () => {
     writeFileSync(
       join(dir, 'package.json'),
       JSON.stringify({ dependencies: { next: '^14.0.0' } }),
@@ -119,7 +119,53 @@ describe('runInit', () => {
 
     await runInit(dir, false);
 
-    const content = readFileSync(join(dir, 'app/layout.tsx'), 'utf-8');
+    // Should create a 'use client' wrapper file
+    const devtoolsPath = join(dir, 'app/devtools.ts');
+    expect(existsSync(devtoolsPath)).toBe(true);
+    const wrapper = readFileSync(devtoolsPath, 'utf-8');
+    expect(wrapper).toContain("'use client'");
+    expect(wrapper).toContain("agent-react-devtools/connect");
+
+    // Layout should import the wrapper, not connect directly
+    const layout = readFileSync(join(dir, 'app/layout.tsx'), 'utf-8');
+    expect(layout).toMatch(/^import '\.\/devtools'/);
+    expect(layout).not.toContain('agent-react-devtools/connect');
+  });
+
+  it('is idempotent for Next.js App Router', async () => {
+    writeFileSync(
+      join(dir, 'package.json'),
+      JSON.stringify({ dependencies: { next: '^14.0.0' } }),
+    );
+    mkdirSync(join(dir, 'app'));
+    writeFileSync(
+      join(dir, 'app/layout.tsx'),
+      `export default function Layout({ children }) {\n  return <html><body>{children}</body></html>;\n}\n`,
+    );
+
+    await runInit(dir, false);
+    const layoutAfterFirst = readFileSync(join(dir, 'app/layout.tsx'), 'utf-8');
+
+    await runInit(dir, false);
+    const layoutAfterSecond = readFileSync(join(dir, 'app/layout.tsx'), 'utf-8');
+
+    expect(layoutAfterSecond).toBe(layoutAfterFirst);
+  });
+
+  it('patches Next.js Pages Router directly', async () => {
+    writeFileSync(
+      join(dir, 'package.json'),
+      JSON.stringify({ dependencies: { next: '^14.0.0' } }),
+    );
+    mkdirSync(join(dir, 'pages'));
+    writeFileSync(
+      join(dir, 'pages/_app.tsx'),
+      `export default function App({ Component, pageProps }) {\n  return <Component {...pageProps} />;\n}\n`,
+    );
+
+    await runInit(dir, false);
+
+    const content = readFileSync(join(dir, 'pages/_app.tsx'), 'utf-8');
     expect(content).toMatch(/^import 'agent-react-devtools\/connect'/);
   });
 

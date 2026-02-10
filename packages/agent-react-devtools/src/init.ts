@@ -1,5 +1,5 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
 
 type Framework = 'vite' | 'nextjs' | 'cra' | 'react-native' | 'unknown';
 
@@ -30,7 +30,7 @@ function findFile(cwd: string, ...candidates: string[]): string | null {
 
 function prependImport(filePath: string, importLine: string, dryRun: boolean): string | null {
   const content = readFileSync(filePath, 'utf-8');
-  if (content.includes('agent-react-devtools')) {
+  if (content.includes(importLine) || content.includes('agent-react-devtools')) {
     return null; // already configured
   }
   const newContent = importLine + '\n' + content;
@@ -96,30 +96,63 @@ function patchViteConfig(cwd: string, dryRun: boolean): string[] {
 }
 
 function patchNextJs(cwd: string, dryRun: boolean): string[] {
-  const entryPath = findFile(
+  // Try Pages Router first — _app is always client-side
+  const pagesEntry = findFile(
+    cwd,
+    'pages/_app.tsx',
+    'pages/_app.jsx',
+    'pages/_app.js',
+    'src/pages/_app.tsx',
+    'src/pages/_app.jsx',
+  );
+  if (pagesEntry) {
+    const result = prependImport(
+      pagesEntry,
+      "import 'agent-react-devtools/connect';",
+      dryRun,
+    );
+    return result ? [result] : [];
+  }
+
+  // App Router — layout is a Server Component, so we need a 'use client' wrapper
+  const layoutPath = findFile(
     cwd,
     'app/layout.tsx',
     'app/layout.jsx',
     'app/layout.js',
-    'pages/_app.tsx',
-    'pages/_app.jsx',
-    'pages/_app.js',
     'src/app/layout.tsx',
     'src/app/layout.jsx',
-    'src/pages/_app.tsx',
-    'src/pages/_app.jsx',
   );
-  if (!entryPath) {
+  if (!layoutPath) {
     console.error('  Could not find app/layout.tsx or pages/_app.tsx');
     return [];
   }
 
-  const result = prependImport(
-    entryPath,
-    "import 'agent-react-devtools/connect';",
-    dryRun,
-  );
-  return result ? [result] : [];
+  const devtoolsPath = join(dirname(layoutPath), 'devtools.ts');
+  const modified: string[] = [];
+
+  // Create the 'use client' wrapper file
+  if (existsSync(devtoolsPath)) {
+    const existing = readFileSync(devtoolsPath, 'utf-8');
+    if (!existing.includes('agent-react-devtools')) {
+      console.error(`  ${devtoolsPath} already exists with different content`);
+      return [];
+    }
+  } else {
+    const wrapper = "'use client';\nimport 'agent-react-devtools/connect';\n";
+    if (!dryRun) {
+      writeFileSync(devtoolsPath, wrapper, 'utf-8');
+    }
+    modified.push(devtoolsPath);
+  }
+
+  // Prepend import of the wrapper to the layout
+  const result = prependImport(layoutPath, "import './devtools';", dryRun);
+  if (result) {
+    modified.push(result);
+  }
+
+  return modified;
 }
 
 function patchCRA(cwd: string, dryRun: boolean): string[] {
@@ -200,11 +233,7 @@ export async function runInit(
   }
 
   console.log('\nNext steps:');
-  if (framework === 'vite') {
-    console.log('  1. Install: npm install -D agent-react-devtools react-devtools-core');
-  } else {
-    console.log('  1. Install: npm install -D agent-react-devtools');
-  }
+  console.log('  1. Install: npm install -D agent-react-devtools react-devtools-core');
   console.log('  2. Start daemon: agent-react-devtools start');
   console.log('  3. Start dev server and open your app');
   console.log('  4. Inspect: agent-react-devtools get tree');
