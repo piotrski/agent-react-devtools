@@ -34,11 +34,12 @@ function noop(): Promise<void> {
 // SSR guard
 const isSSR = typeof window === 'undefined';
 
-// Production guard
+// Production guard — check bundler-injected signals first, then Node.js process.env
 const isProd =
-  typeof process !== 'undefined' &&
-  process.env &&
-  process.env.NODE_ENV === 'production';
+  (typeof import.meta !== 'undefined' &&
+    (import.meta as any).env?.PROD === true) ||
+  (typeof process !== 'undefined' &&
+    process.env?.NODE_ENV === 'production');
 
 export const ready: Promise<void> = isSSR || isProd ? noop() : connect();
 

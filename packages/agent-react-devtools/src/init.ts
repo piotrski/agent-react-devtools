@@ -223,7 +223,7 @@ export async function runInit(
       break;
   }
 
-  if (modified.length === 0 && !dryRun) {
+  if (modified.length === 0) {
     console.log('  No changes needed (already configured or could not find entry files)');
     return;
   }
