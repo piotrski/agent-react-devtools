@@ -104,6 +104,7 @@ function patchNextJs(cwd: string, dryRun: boolean): string[] {
     'pages/_app.js',
     'src/pages/_app.tsx',
     'src/pages/_app.jsx',
+    'src/pages/_app.js',
   );
   if (pagesEntry) {
     const result = prependImport(
@@ -122,6 +123,7 @@ function patchNextJs(cwd: string, dryRun: boolean): string[] {
     'app/layout.js',
     'src/app/layout.tsx',
     'src/app/layout.jsx',
+    'src/app/layout.js',
   );
   if (!layoutPath) {
     console.error('  Could not find app/layout.tsx or pages/_app.tsx');
