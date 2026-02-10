@@ -136,18 +136,67 @@ agent-react-devtools profile commit <N | #N> [--limit N]  # Single commit detail
 
 ## Connecting Your App
 
-Install `react-devtools-core` in your app and connect before React renders (e.g. in `src/main.tsx`):
+### Quick setup
+
+Run the init command in your project root to auto-configure your framework:
+
+```sh
+npx agent-react-devtools init
+```
+
+This detects your framework (Vite, Next.js, CRA) and patches the appropriate config file.
+
+### One-line import
+
+Add a single import as the first line of your entry point (e.g. `src/main.tsx`):
 
 ```ts
-import { initialize, connectToDevTools } from 'react-devtools-core';
-import { createRoot } from 'react-dom/client';
-import App from './App';
-
-initialize();
-connectToDevTools({ port: 8097 });
-
-createRoot(document.getElementById('root')!).render(<App />);
+import "agent-react-devtools/connect";
 ```
+
+This handles everything: deleting the Vite hook stub, initializing react-devtools-core, and connecting via WebSocket. Your app is never blocked — if the daemon isn't running, it times out after 2 seconds.
+
+### Vite plugin
+
+For Vite apps, use the plugin instead — no changes to your app code needed:
+
+```ts
+// vite.config.ts
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import { reactDevtools } from "agent-react-devtools/vite";
+
+export default defineConfig({
+  plugins: [reactDevtools(), react()],
+});
+```
+
+The plugin only runs in dev mode (`vite dev`), not in production builds.
+
+Options:
+
+```ts
+reactDevtools({ port: 8097, host: "localhost" });
+```
+
+### React Native
+
+React Native apps connect to DevTools automatically — no code changes needed:
+
+```sh
+agent-react-devtools start
+npx react-native start
+```
+
+For physical devices, forward the port:
+
+```sh
+adb reverse tcp:8097 tcp:8097
+```
+
+For Expo, the connection works automatically with the Expo dev client.
+
+To use a custom port, set the `REACT_DEVTOOLS_PORT` environment variable.
 
 ## Using with AI Agents
 
