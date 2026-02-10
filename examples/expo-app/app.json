@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "example-expo-app",
+    "slug": "example-expo-app",
+    "version": "1.0.0",
+    "scheme": "example-expo-app",
+    "platforms": [
+      "ios",
+      "android"
+    ],
+    "ios": {
+      "bundleIdentifier": "com.example.agentreactdevtools"
+    },
+    "android": {
+      "package": "com.example.agentreactdevtools"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-asset",
+      "expo-font"
+    ]
+  }
+}

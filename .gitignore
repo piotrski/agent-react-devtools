@@ -12,3 +12,4 @@ packages/agent-react-devtools/README.md
 # Examples
 examples/*/node_modules/
 examples/*/dist/
+examples/*/.expo/

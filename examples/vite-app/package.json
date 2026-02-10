@@ -1,5 +1,5 @@
 {
-  "name": "example-react-app",
+  "name": "example-vite-app",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -8,6 +8,7 @@
     "build": "vite build"
   },
   "dependencies": {
+    "agent-react-devtools": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-devtools-core": "^6.1.0"

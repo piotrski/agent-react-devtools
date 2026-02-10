@@ -23,6 +23,9 @@ import type { IpcCommand } from './types.js';
 function usage(): string {
   return `Usage: devtools <command> [options]
 
+Setup:
+  init [--dry-run]              Auto-configure your React app
+
 Daemon:
   start [--port 8097]           Start daemon
   stop                          Stop daemon
@@ -92,6 +95,13 @@ async function main(): Promise<void> {
   const cmd1 = command[1];
 
   try {
+    // ── Init ──
+    if (cmd0 === 'init') {
+      const { runInit } = await import('./init.js');
+      await runInit(process.cwd(), flags['dry-run'] === true);
+      return;
+    }
+
     // ── Daemon management ──
     if (cmd0 === 'start') {
       const port = flags['port'] ? parseInt(flags['port'] as string, 10) : undefined;
