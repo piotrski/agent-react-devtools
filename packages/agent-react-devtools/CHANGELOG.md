@@ -1,5 +1,19 @@
 # agent-react-devtools
 
+## 0.2.0
+
+### Minor Changes
+
+- 0c88c11: Zero-config app integration — connect your React app in one line:
+
+  - **`agent-react-devtools init`** — CLI command that auto-detects your framework (Vite, Next.js, CRA, React Native) and patches the right config files. Next.js App Router gets a `'use client'` wrapper so the connect code runs in the browser.
+  - **`agent-react-devtools/connect`** — add `import 'agent-react-devtools/connect'` as the first line of your entry point to connect to the daemon. Skips SSR and production builds automatically, never blocks your app.
+  - **`agent-react-devtools/vite`** — Vite plugin that injects the connect script automatically, no app code changes needed.
+
+### Patch Changes
+
+- 10ac53c: Add comprehensive README with usage examples and MIT LICENSE file
+
 ## 0.1.0
 
 ### Minor Changes
