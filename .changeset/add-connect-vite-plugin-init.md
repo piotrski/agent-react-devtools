@@ -2,10 +2,8 @@
 "agent-react-devtools": minor
 ---
 
-Add connect script, Vite plugin, and init command for zero-config app integration
+Zero-config app integration — connect your React app in one line:
 
-- `agent-react-devtools/connect`: side-effect import that initializes react-devtools-core and connects via WebSocket, with SSR/production guards and graceful fallback
-- `agent-react-devtools/vite`: Vite plugin that injects the connect script automatically
-- `agent-react-devtools init`: CLI command that auto-detects framework (Vite, Next.js, CRA, React Native) and patches config files
-- Next.js App Router support: creates a `'use client'` wrapper file instead of patching the server-only layout
-- Expo example app
+- **`agent-react-devtools init`** — CLI command that auto-detects your framework (Vite, Next.js, CRA, React Native) and patches the right config files. Next.js App Router gets a `'use client'` wrapper so the connect code runs in the browser.
+- **`agent-react-devtools/connect`** — add `import 'agent-react-devtools/connect'` as the first line of your entry point to connect to the daemon. Skips SSR and production builds automatically, never blocks your app.
+- **`agent-react-devtools/vite`** — Vite plugin that injects the connect script automatically, no app code changes needed.
