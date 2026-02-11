@@ -198,9 +198,28 @@ For Expo, the connection works automatically with the Expo dev client.
 
 To use a custom port, set the `REACT_DEVTOOLS_PORT` environment variable.
 
-## Using with AI Agents
+## Using with AI Coding Assistants
 
-Add something like this to your project's `CLAUDE.md` (or equivalent agent instructions):
+Add the skill to your AI coding assistant for richer context:
+
+```sh
+npx skills add piotrski/agent-react-devtools
+```
+
+This works with Claude Code, Codex, Cursor, Gemini CLI, GitHub Copilot, Goose, OpenCode, and Windsurf.
+
+### Claude Code plugin
+
+You can also install via the Claude Code plugin marketplace:
+
+```
+/plugin marketplace add piotrski/agent-react-devtools
+/plugin install agent-react-devtools@piotrski
+```
+
+### Manual setup
+
+Alternatively, add something like this to your project's `CLAUDE.md` (or equivalent agent instructions):
 
 ```markdown
 ## React Debugging

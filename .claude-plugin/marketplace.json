@@ -1,0 +1,20 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "piotrski",
+  "owner": {
+    "name": "Piotr Tomczewski",
+    "email": "piotr@tomczewski.dev"
+  },
+  "metadata": {
+    "description": "React DevTools for AI agents — inspect components, profile renders, debug performance"
+  },
+  "plugins": [
+    {
+      "name": "agent-react-devtools",
+      "description": "Inspect React component trees, read props/state/hooks, and profile render performance from the terminal",
+      "source": "./packages/agent-react-devtools",
+      "strict": false,
+      "category": "development"
+    }
+  ]
+}
