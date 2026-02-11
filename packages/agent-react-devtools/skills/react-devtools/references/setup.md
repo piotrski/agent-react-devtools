@@ -98,3 +98,16 @@ If `Apps: 0 connected`:
 1. Check the app is running in dev mode
 2. Check the console for WebSocket connection errors
 3. Ensure no other DevTools instance is using port 8097
+4. If using `agent-browser`, make sure you're using **headed mode** (`--headed`) — headless Chromium does not properly execute the devtools connect script
+
+## Using with agent-browser
+
+When automating the browser with `agent-browser`, you must use headed mode. Headless Chromium handles ES module script execution differently, which prevents the connect script from installing the devtools hook before React loads.
+
+```bash
+# Headed mode is required for devtools to connect
+agent-browser --session devtools --headed open http://localhost:5173/
+
+# Verify connection
+agent-react-devtools status
+```
