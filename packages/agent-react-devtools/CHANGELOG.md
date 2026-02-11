@@ -1,5 +1,11 @@
 # agent-react-devtools
 
+## 0.2.1
+
+### Patch Changes
+
+- 0c2de5b: Add Claude Code skill and plugin marketplace metadata
+
 ## 0.2.0
 
 ### Minor Changes
