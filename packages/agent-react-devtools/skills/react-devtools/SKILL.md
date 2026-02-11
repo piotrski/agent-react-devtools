@@ -124,10 +124,20 @@ agent-react-devtools profile slow --limit 5
 # Compare render counts and durations to the previous run
 ```
 
+## Using with agent-browser
+
+When using `agent-browser` to drive the app while profiling or debugging, you **must use headed mode** (`--headed`). Headless Chromium does not execute ES module scripts the same way as a real browser, which prevents the devtools connect script from running properly.
+
+```bash
+agent-browser --session devtools --headed open http://localhost:5173/
+agent-react-devtools status  # Should show 1 connected app
+```
+
 ## Important Rules
 
 - **Labels reset** when the app reloads or components unmount/remount. Always re-check with `get tree` or `find` after a page reload.
 - **`status` first** — if status shows 0 connected apps, the React app is not connected. The user may need to run `npx agent-react-devtools init` in their project first.
+- **Headed browser required** — if using `agent-browser`, always use `--headed` mode. Headless Chromium does not properly load the devtools connect script.
 - **Profile while interacting** — profiling only captures renders that happen between `profile start` and `profile stop`. Make sure the relevant interaction happens during that window.
 - **Use `--depth`** on large trees — a deep tree can produce a lot of output. Start with `--depth 3` or `--depth 4` and go deeper only on the subtree you care about.
 

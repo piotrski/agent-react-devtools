@@ -198,6 +198,15 @@ For Expo, the connection works automatically with the Expo dev client.
 
 To use a custom port, set the `REACT_DEVTOOLS_PORT` environment variable.
 
+## Using with agent-browser
+
+When using `agent-browser` to drive the app (e.g. for profiling interactions), you **must use headed mode**. Headless Chromium does not properly execute the devtools connect script:
+
+```sh
+agent-browser --session devtools --headed open http://localhost:5173/
+agent-react-devtools status  # Should show "Apps: 1 connected"
+```
+
 ## Using with AI Coding Assistants
 
 Add the skill to your AI coding assistant for richer context:
