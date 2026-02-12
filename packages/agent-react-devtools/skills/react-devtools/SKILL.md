@@ -56,12 +56,12 @@ agent-react-devtools profile commit 3           # Detail for commit #3
 Every component gets a stable label like `@c1`, `@c2`. Use these to reference components in follow-up commands:
 
 ```
-@c1 [fn] "App"
-├─ @c2 [fn] "Header"
-├─ @c3 [fn] "TodoList"
-│  ├─ @c4 [fn] "TodoItem" key="1"
-│  └─ @c5 [fn] "TodoItem" key="2"
-└─ @c6 [host] "div"
+@c1 [fn] App
+├─ @c2 [fn] Header
+├─ @c3 [fn] TodoList
+│  ├─ @c4 [fn] TodoItem key=1
+│  └─ @c5 [fn] TodoItem key=2
+└─ @c6 [host] div
 ```
 
 Type abbreviations: `fn` = function, `cls` = class, `host` = DOM element, `memo` = React.memo, `fRef` = forwardRef, `susp` = Suspense, `ctx` = context.
@@ -69,7 +69,7 @@ Type abbreviations: `fn` = function, `cls` = class, `host` = DOM element, `memo`
 ### Inspected Component
 
 ```
-@c3 [fn] "TodoList"
+@c3 [fn] TodoList
 props:
   items: [{"id":1,"text":"Buy milk"},{"id":2,"text":"Walk dog"}]
   onDelete: ƒ
@@ -87,8 +87,8 @@ hooks:
 
 ```
 Slowest (by avg render time):
-  ExpensiveList        avg:12.3ms  max:18.1ms  renders:47  cause:props-changed
-  TodoItem             avg:2.1ms   max:5.0ms   renders:94  cause:parent-rendered
+  @c3 [fn] ExpensiveList  avg:12.3ms  max:18.1ms  renders:47  causes:props-changed
+  @c4 [fn] TodoItem  avg:2.1ms  max:5.0ms  renders:94  causes:parent-rendered, props-changed
 ```
 
 Render causes: `props-changed`, `state-changed`, `hooks-changed`, `parent-rendered`, `force-update`, `first-mount`.

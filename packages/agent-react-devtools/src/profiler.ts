@@ -11,7 +11,7 @@ export interface ProfileSummary {
   name: string;
   duration: number;
   commitCount: number;
-  componentRenderCounts: { id: number; displayName: string; count: number }[];
+  componentRenderCounts: { id: number; displayName: string; label?: string; type?: string; count: number }[];
 }
 
 export interface TimelineEntry {
@@ -28,6 +28,8 @@ export interface CommitDetail {
   components: Array<{
     id: number;
     displayName: string;
+    label?: string;
+    type?: string;
     actualDuration: number;
     selfDuration: number;
     causes: RenderCause[];

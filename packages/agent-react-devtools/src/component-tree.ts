@@ -452,6 +452,14 @@ export class ComponentTree {
   }
 
   /**
+   * Look up the @cN label for a given component ID.
+   * Returns undefined if the ID has no label assigned.
+   */
+  getLabel(id: number): string | undefined {
+    return this.idToLabel.get(id);
+  }
+
+  /**
    * Resolve a label like "@c3" to a real node ID.
    * Returns undefined if label not found.
    */
