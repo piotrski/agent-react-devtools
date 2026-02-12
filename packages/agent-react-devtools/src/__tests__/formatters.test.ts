@@ -5,14 +5,16 @@ import {
   formatSearchResults,
   formatCount,
   formatStatus,
+  formatProfileSummary,
   formatProfileReport,
   formatSlowest,
   formatRerenders,
   formatTimeline,
+  formatCommitDetail,
 } from '../formatters.js';
 import type { TreeNode } from '../component-tree.js';
 import type { InspectedElement, StatusInfo, ComponentRenderReport } from '../types.js';
-import type { TimelineEntry } from '../profiler.js';
+import type { ProfileSummary, TimelineEntry, CommitDetail } from '../profiler.js';
 
 describe('formatTree', () => {
   it('should format empty tree', () => {
@@ -27,9 +29,9 @@ describe('formatTree', () => {
     ];
 
     const result = formatTree(nodes);
-    expect(result).toContain('@c1 [fn] "App"');
-    expect(result).toContain('@c2 [memo] "Header"');
-    expect(result).toContain('@c3 [host] "Footer"');
+    expect(result).toContain('@c1 [fn] App');
+    expect(result).toContain('@c2 [memo] Header');
+    expect(result).toContain('@c3 [host] Footer');
     expect(result).toContain('├─');
     expect(result).toContain('└─');
   });
@@ -41,7 +43,7 @@ describe('formatTree', () => {
     ];
 
     const result = formatTree(nodes);
-    expect(result).toContain('key="item-1"');
+    expect(result).toContain('key=item-1');
   });
 });
 
@@ -63,7 +65,7 @@ describe('formatComponent', () => {
     };
 
     const result = formatComponent(element, '@c5');
-    expect(result).toContain('@c5 [fn] "UserProfile"');
+    expect(result).toContain('@c5 [fn] UserProfile');
     expect(result).toContain('props:');
     expect(result).toContain('  userId: 42');
     expect(result).toContain('  theme: "dark"');
@@ -71,6 +73,23 @@ describe('formatComponent', () => {
     expect(result).toContain('  isEditing: false');
     expect(result).toContain('hooks:');
     expect(result).toContain('  useState: false');
+  });
+
+  it('should show key without quotes', () => {
+    const element: InspectedElement = {
+      id: 5,
+      displayName: 'Item',
+      type: 'function',
+      key: 'abc',
+      props: {},
+      state: null,
+      hooks: null,
+      renderedAt: null,
+    };
+
+    const result = formatComponent(element, '@c5');
+    expect(result).toContain('key=abc');
+    expect(result).not.toContain('key="abc"');
   });
 });
 
@@ -86,9 +105,9 @@ describe('formatSearchResults', () => {
     ];
 
     const result = formatSearchResults(results);
-    expect(result).toContain('@c2 [fn] "UserProfile"');
-    expect(result).toContain('@c3 [memo] "UserCard"');
-    expect(result).toContain('key="bob"');
+    expect(result).toContain('@c2 [fn] UserProfile');
+    expect(result).toContain('@c3 [memo] UserCard');
+    expect(result).toContain('key=bob');
   });
 });
 
@@ -122,11 +141,50 @@ describe('formatStatus', () => {
   });
 });
 
+describe('formatProfileSummary', () => {
+  it('should format summary with labels and types', () => {
+    const summary: ProfileSummary = {
+      name: 'test-session',
+      duration: 5000,
+      commitCount: 3,
+      componentRenderCounts: [
+        { id: 1, displayName: 'App', label: '@c1', type: 'function', count: 10 },
+        { id: 2, displayName: 'Header', label: '@c2', type: 'memo', count: 5 },
+      ],
+    };
+
+    const result = formatProfileSummary(summary);
+    expect(result).toContain('test-session');
+    expect(result).toContain('5.0s');
+    expect(result).toContain('3 commits');
+    expect(result).toContain('@c1 [fn] App');
+    expect(result).toContain('10 renders');
+    expect(result).toContain('@c2 [memo] Header');
+    expect(result).toContain('5 renders');
+  });
+
+  it('should fallback for missing labels', () => {
+    const summary: ProfileSummary = {
+      name: 'sess',
+      duration: 1000,
+      commitCount: 1,
+      componentRenderCounts: [
+        { id: 1, displayName: 'App', count: 3 },
+      ],
+    };
+
+    const result = formatProfileSummary(summary);
+    expect(result).toContain('? [?] App');
+  });
+});
+
 describe('formatProfileReport', () => {
-  it('should format a render report', () => {
+  it('should format a render report with type tag', () => {
     const report: ComponentRenderReport = {
       id: 5,
       displayName: 'UserProfile',
+      label: '@c5',
+      type: 'function',
       renderCount: 12,
       totalDuration: 540,
       avgDuration: 45,
@@ -134,12 +192,29 @@ describe('formatProfileReport', () => {
       causes: ['props-changed', 'state-changed'],
     };
 
-    const result = formatProfileReport(report, '@c5');
-    expect(result).toContain('@c5 "UserProfile"');
+    const result = formatProfileReport(report);
+    expect(result).toContain('@c5 [fn] UserProfile');
     expect(result).toContain('renders:12');
     expect(result).toContain('avg:45.0ms');
     expect(result).toContain('max:120.0ms');
     expect(result).toContain('props-changed');
+  });
+
+  it('should prefer explicit label param over report.label', () => {
+    const report: ComponentRenderReport = {
+      id: 5,
+      displayName: 'UserProfile',
+      label: '@c5',
+      type: 'function',
+      renderCount: 1,
+      totalDuration: 10,
+      avgDuration: 10,
+      maxDuration: 10,
+      causes: [],
+    };
+
+    const result = formatProfileReport(report, '@c99');
+    expect(result).toContain('@c99 [fn] UserProfile');
   });
 });
 
@@ -148,28 +223,31 @@ describe('formatSlowest', () => {
     expect(formatSlowest([])).toContain('No profiling data');
   });
 
-  it('should format slowest components', () => {
+  it('should format slowest components with labels and all causes', () => {
     const reports: ComponentRenderReport[] = [
-      { id: 1, displayName: 'SlowComp', renderCount: 5, totalDuration: 250, avgDuration: 50, maxDuration: 100, causes: ['props-changed'] },
-      { id: 2, displayName: 'FastComp', renderCount: 10, totalDuration: 100, avgDuration: 10, maxDuration: 20, causes: ['state-changed'] },
+      { id: 1, displayName: 'SlowComp', label: '@c1', type: 'function', renderCount: 5, totalDuration: 250, avgDuration: 50, maxDuration: 100, causes: ['props-changed', 'state-changed'] },
+      { id: 2, displayName: 'FastComp', label: '@c2', type: 'memo', renderCount: 10, totalDuration: 100, avgDuration: 10, maxDuration: 20, causes: ['state-changed'] },
     ];
 
     const result = formatSlowest(reports);
     expect(result).toContain('Slowest');
-    expect(result).toContain('SlowComp');
-    expect(result).toContain('FastComp');
+    expect(result).toContain('@c1 [fn] SlowComp');
+    expect(result).toContain('@c2 [memo] FastComp');
+    expect(result).toContain('causes:props-changed, state-changed');
+    expect(result).toContain('causes:state-changed');
   });
 });
 
 describe('formatRerenders', () => {
-  it('should format rerender data', () => {
+  it('should format rerender data with labels and all causes', () => {
     const reports: ComponentRenderReport[] = [
-      { id: 1, displayName: 'Chatty', renderCount: 50, totalDuration: 100, avgDuration: 2, maxDuration: 5, causes: ['parent-rendered'] },
+      { id: 1, displayName: 'Chatty', label: '@c1', type: 'function', renderCount: 50, totalDuration: 100, avgDuration: 2, maxDuration: 5, causes: ['parent-rendered', 'props-changed'] },
     ];
 
     const result = formatRerenders(reports);
     expect(result).toContain('50 renders');
-    expect(result).toContain('parent-rendered');
+    expect(result).toContain('@c1 [fn] Chatty');
+    expect(result).toContain('causes:parent-rendered, props-changed');
   });
 });
 
@@ -185,5 +263,46 @@ describe('formatTimeline', () => {
     expect(result).toContain('12.5ms');
     expect(result).toContain('#1');
     expect(result).toContain('8.3ms');
+  });
+});
+
+describe('formatCommitDetail', () => {
+  it('should format commit detail with labels and types', () => {
+    const detail: CommitDetail = {
+      index: 0,
+      timestamp: 1000,
+      duration: 15.5,
+      components: [
+        { id: 1, displayName: 'App', label: '@c1', type: 'function', actualDuration: 15.5, selfDuration: 5.2, causes: ['state-changed'] },
+        { id: 2, displayName: 'Header', label: '@c2', type: 'memo', actualDuration: 10.3, selfDuration: 10.3, causes: ['props-changed', 'hooks-changed'] },
+      ],
+      totalComponents: 2,
+    };
+
+    const result = formatCommitDetail(detail);
+    expect(result).toContain('Commit #0');
+    expect(result).toContain('15.5ms');
+    expect(result).toContain('2 components');
+    expect(result).toContain('@c1 [fn] App');
+    expect(result).toContain('self:5.2ms');
+    expect(result).toContain('total:15.5ms');
+    expect(result).toContain('causes:state-changed');
+    expect(result).toContain('@c2 [memo] Header');
+    expect(result).toContain('causes:props-changed, hooks-changed');
+  });
+
+  it('should show hidden count', () => {
+    const detail: CommitDetail = {
+      index: 1,
+      timestamp: 2000,
+      duration: 10,
+      components: [
+        { id: 1, displayName: 'App', label: '@c1', type: 'function', actualDuration: 10, selfDuration: 10, causes: [] },
+      ],
+      totalComponents: 5,
+    };
+
+    const result = formatCommitDetail(detail);
+    expect(result).toContain('... 4 more');
   });
 });

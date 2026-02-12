@@ -23,6 +23,17 @@ function typeTag(type: string): string {
   return TYPE_ABBREV[type] || type;
 }
 
+/**
+ * Format a consistent component reference: `@c1 [fn] Name` or `@c1 [fn] Name key=x`
+ */
+function formatRef(opts: { label?: string; type?: string; name: string; key?: string | null }): string {
+  const ref = opts.label || '?';
+  const tag = typeTag(opts.type || 'other');
+  let s = `${ref} [${tag}] ${opts.name}`;
+  if (opts.key) s += ` key=${opts.key}`;
+  return s;
+}
+
 // ── Tree connector characters ──
 const PIPE = '│  ';
 const TEE = '├─ ';
@@ -51,8 +62,7 @@ export function formatTree(nodes: TreeNode[]): string {
     if (!node) return;
 
     const connector = isRoot ? '' : isLast ? ELBOW : TEE;
-    let line = `${node.label} [${typeTag(node.type)}] "${node.displayName}"`;
-    if (node.key) line += ` key="${node.key}"`;
+    const line = formatRef({ label: node.label, type: node.type, name: node.displayName, key: node.key });
 
     lines.push(`${prefix}${connector}${line}`);
 
@@ -76,10 +86,7 @@ export function formatTree(nodes: TreeNode[]): string {
 export function formatComponent(element: InspectedElement, label?: string): string {
   const lines: string[] = [];
 
-  const ref = label || `#${element.id}`;
-  let header = `${ref} [${typeTag(element.type)}] "${element.displayName}"`;
-  if (element.key) header += ` key="${element.key}"`;
-  lines.push(header);
+  lines.push(formatRef({ label: label || `#${element.id}`, type: element.type, name: element.displayName, key: element.key }));
 
   // Props
   if (element.props && Object.keys(element.props).length > 0) {
@@ -119,11 +126,7 @@ export function formatSearchResults(results: TreeNode[]): string {
   if (results.length === 0) return 'No components found';
 
   return results
-    .map((n) => {
-      let line = `${n.label} [${typeTag(n.type)}] "${n.displayName}"`;
-      if (n.key) line += ` key="${n.key}"`;
-      return line;
-    })
+    .map((n) => formatRef({ label: n.label, type: n.type, name: n.displayName, key: n.key }))
     .join('\n');
 }
 
@@ -161,8 +164,8 @@ export function formatProfileSummary(summary: ProfileSummary): string {
     lines.push('');
     lines.push('Top renders:');
     for (const c of summary.componentRenderCounts.slice(0, 10)) {
-      const name = c.displayName || `#${c.id}`;
-      lines.push(`  ${name}  ${c.count} renders`);
+      const ref = formatRef({ label: c.label, type: c.type, name: c.displayName || `#${c.id}` });
+      lines.push(`  ${ref}  ${c.count} renders`);
     }
   }
 
@@ -171,8 +174,7 @@ export function formatProfileSummary(summary: ProfileSummary): string {
 
 export function formatProfileReport(report: ComponentRenderReport, label?: string): string {
   const lines: string[] = [];
-  const ref = label || `#${report.id}`;
-  lines.push(`${ref} "${report.displayName}"`);
+  lines.push(formatRef({ label: label || report.label || `#${report.id}`, type: report.type, name: report.displayName }));
   lines.push(
     `renders:${report.renderCount}  avg:${report.avgDuration.toFixed(1)}ms  max:${report.maxDuration.toFixed(1)}ms  total:${report.totalDuration.toFixed(1)}ms`,
   );
@@ -187,9 +189,10 @@ export function formatSlowest(reports: ComponentRenderReport[]): string {
 
   const lines: string[] = ['Slowest (by avg render time):'];
   for (const r of reports) {
-    const cause = r.causes[0] || '?';
+    const ref = formatRef({ label: r.label, type: r.type, name: r.displayName });
+    const causes = r.causes.length > 0 ? r.causes.join(', ') : '?';
     lines.push(
-      `  ${pad(r.displayName, 20)} avg:${r.avgDuration.toFixed(1)}ms  max:${r.maxDuration.toFixed(1)}ms  renders:${r.renderCount}  cause:${cause}`,
+      `  ${ref}  avg:${r.avgDuration.toFixed(1)}ms  max:${r.maxDuration.toFixed(1)}ms  renders:${r.renderCount}  causes:${causes}`,
     );
   }
   return lines.join('\n');
@@ -200,9 +203,10 @@ export function formatRerenders(reports: ComponentRenderReport[]): string {
 
   const lines: string[] = ['Most re-renders:'];
   for (const r of reports) {
-    const cause = r.causes[0] || '?';
+    const ref = formatRef({ label: r.label, type: r.type, name: r.displayName });
+    const causes = r.causes.length > 0 ? r.causes.join(', ') : '?';
     lines.push(
-      `  ${pad(r.displayName, 20)} ${r.renderCount} renders — ${cause}`,
+      `  ${ref}  ${r.renderCount} renders  causes:${causes}`,
     );
   }
   return lines.join('\n');
@@ -225,8 +229,9 @@ export function formatCommitDetail(detail: CommitDetail): string {
   lines.push(`Commit #${detail.index}  ${detail.duration.toFixed(1)}ms  ${detail.totalComponents} components`);
   lines.push('');
   for (const c of detail.components) {
+    const ref = formatRef({ label: c.label, type: c.type, name: c.displayName });
     const causes = c.causes.length > 0 ? c.causes.join(', ') : '?';
-    lines.push(`  ${pad(c.displayName, 24)} self:${c.selfDuration.toFixed(1)}ms  total:${c.actualDuration.toFixed(1)}ms  ${causes}`);
+    lines.push(`  ${ref}  self:${c.selfDuration.toFixed(1)}ms  total:${c.actualDuration.toFixed(1)}ms  causes:${causes}`);
   }
   const hidden = detail.totalComponents - detail.components.length;
   if (hidden > 0) {
@@ -236,14 +241,6 @@ export function formatCommitDetail(detail: CommitDetail): string {
 }
 
 // ── Helpers ──
-
-function formatValue(obj: unknown): string {
-  try {
-    return JSON.stringify(obj, replacer, 0) || 'undefined';
-  } catch {
-    return String(obj);
-  }
-}
 
 function formatCompactValue(val: unknown): string | undefined {
   if (val === undefined) return undefined;
@@ -263,8 +260,4 @@ function formatCompactValue(val: unknown): string | undefined {
 function replacer(_key: string, value: unknown): unknown {
   if (typeof value === 'function') return 'ƒ';
   return value;
-}
-
-function pad(s: string, len: number): string {
-  return s.length >= len ? s : s + ' '.repeat(len - s.length);
 }

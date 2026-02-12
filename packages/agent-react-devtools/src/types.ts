@@ -67,6 +67,8 @@ export interface ChangeDescription {
 export interface ComponentRenderReport {
   id: number;
   displayName: string;
+  label?: string;
+  type?: ComponentType;
   renderCount: number;
   totalDuration: number;
   avgDuration: number;

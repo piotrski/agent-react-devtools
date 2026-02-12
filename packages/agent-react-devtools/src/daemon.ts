@@ -21,6 +21,22 @@ function getDaemonInfoPath(): string {
   return path.join(STATE_DIR, 'daemon.json');
 }
 
+/**
+ * Enrich profiling result items with label + type from the component tree.
+ */
+function enrichWithLabels(
+  items: Array<{ id: number; label?: string; type?: string }>,
+  tree: ComponentTree,
+): void {
+  for (const item of items) {
+    if (!item.label) item.label = tree.getLabel(item.id);
+    if (!item.type) {
+      const node = tree.getNode(item.id);
+      if (node) item.type = node.type;
+    }
+  }
+}
+
 class Daemon {
   private ipcServer: net.Server | null = null;
   private bridge: DevToolsBridge;
@@ -177,10 +193,12 @@ class Daemon {
 
         case 'profile-stop': {
           await this.bridge.stopProfilingAndCollect();
+          this.tree.getTree(); // populate label maps
           const session = this.profiler.stop(this.tree);
           if (!session) {
             return { ok: false, error: 'No active profiling session' };
           }
+          enrichWithLabels(session.componentRenderCounts, this.tree);
           return { ok: true, data: session };
         }
 
@@ -189,6 +207,7 @@ class Daemon {
           if (resolvedCompId === undefined) {
             return { ok: false, error: `Component ${cmd.componentId} not found` };
           }
+          this.tree.getTree(); // populate label maps
           const report = this.profiler.getReport(resolvedCompId, this.tree);
           if (!report) {
             return {
@@ -196,21 +215,24 @@ class Daemon {
               error: `No profiling data for component ${cmd.componentId}`,
             };
           }
+          enrichWithLabels([report], this.tree);
           const compLabel = typeof cmd.componentId === 'string' ? cmd.componentId : undefined;
           return { ok: true, data: report, label: compLabel };
         }
 
-        case 'profile-slow':
-          return {
-            ok: true,
-            data: this.profiler.getSlowest(this.tree, cmd.limit),
-          };
+        case 'profile-slow': {
+          this.tree.getTree(); // populate label maps
+          const slowest = this.profiler.getSlowest(this.tree, cmd.limit);
+          enrichWithLabels(slowest, this.tree);
+          return { ok: true, data: slowest };
+        }
 
-        case 'profile-rerenders':
-          return {
-            ok: true,
-            data: this.profiler.getMostRerenders(this.tree, cmd.limit),
-          };
+        case 'profile-rerenders': {
+          this.tree.getTree(); // populate label maps
+          const rerenders = this.profiler.getMostRerenders(this.tree, cmd.limit);
+          enrichWithLabels(rerenders, this.tree);
+          return { ok: true, data: rerenders };
+        }
 
         case 'profile-timeline':
           return {
@@ -219,10 +241,12 @@ class Daemon {
           };
 
         case 'profile-commit': {
+          this.tree.getTree(); // populate label maps
           const detail = this.profiler.getCommitDetails(cmd.index, this.tree, cmd.limit);
           if (!detail) {
             return { ok: false, error: `Commit #${cmd.index} not found` };
           }
+          enrichWithLabels(detail.components, this.tree);
           return { ok: true, data: detail };
         }
 
