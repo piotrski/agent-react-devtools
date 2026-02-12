@@ -4,6 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "pretest": "bun run --filter agent-react-devtools build",
+    "pretest:protocol": "bun run --filter agent-react-devtools build",
+    "pretest:browser": "bun run --filter agent-react-devtools build",
     "test": "vitest run",
     "test:protocol": "vitest run --exclude src/browser.test.ts",
     "test:browser": "vitest run src/browser.test.ts"
