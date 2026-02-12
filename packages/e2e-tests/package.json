@@ -1,0 +1,16 @@
+{
+  "name": "e2e-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:protocol": "vitest run src/protocol.test.ts",
+    "test:browser": "vitest run src/browser.test.ts"
+  },
+  "devDependencies": {
+    "agent-react-devtools": "workspace:*",
+    "vitest": "^2.0.0",
+    "ws": "^8.0.0",
+    "@types/ws": "^8.0.0"
+  }
+}
