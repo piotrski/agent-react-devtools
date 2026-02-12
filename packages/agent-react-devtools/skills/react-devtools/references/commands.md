@@ -58,12 +58,12 @@ Stop profiling and collect data from React. Shows a summary with duration, commi
 ### `agent-react-devtools profile slow [--limit N]`
 Rank components by average render duration (slowest first). Default limit: 10.
 
-Output columns: component name, avg duration, max duration, render count, primary cause.
+Output columns: label, type tag, component name, avg duration, max duration, render count, all causes.
 
 ### `agent-react-devtools profile rerenders [--limit N]`
 Rank components by render count (most re-renders first). Default limit: 10.
 
-Output columns: component name, render count, primary cause.
+Output columns: label, type tag, component name, render count, all causes.
 
 ### `agent-react-devtools profile report <@cN | id>`
 Detailed render report for a single component: render count, avg/max/total duration, all render causes.

@@ -44,15 +44,15 @@ agent-react-devtools get tree --depth 3
 ```
 
 ```
-@c1 [fn] "App"
-├─ @c2 [fn] "Header"
-│  ├─ @c3 [fn] "Nav"
-│  └─ @c4 [fn] "SearchBar"
-├─ @c5 [fn] "TodoList"
-│  ├─ @c6 [fn] "TodoItem" key="1"
-│  ├─ @c7 [fn] "TodoItem" key="2"
-│  └─ @c8 [fn] "TodoItem" key="3"
-└─ @c9 [fn] "Footer"
+@c1 [fn] App
+├─ @c2 [fn] Header
+│  ├─ @c3 [fn] Nav
+│  └─ @c4 [fn] SearchBar
+├─ @c5 [fn] TodoList
+│  ├─ @c6 [fn] TodoItem key=1
+│  ├─ @c7 [fn] TodoItem key=2
+│  └─ @c8 [fn] TodoItem key=3
+└─ @c9 [fn] Footer
 ```
 
 Inspect a component's props, state, and hooks:
@@ -62,7 +62,7 @@ agent-react-devtools get component @c6
 ```
 
 ```
-@c6 [fn] "TodoItem" key="1"
+@c6 [fn] TodoItem key=1
 props:
   id: 1
   text: "Buy groceries"
@@ -80,9 +80,9 @@ agent-react-devtools find TodoItem
 ```
 
 ```
-@c6 [fn] "TodoItem" key="1"
-@c7 [fn] "TodoItem" key="2"
-@c8 [fn] "TodoItem" key="3"
+@c6 [fn] TodoItem key=1
+@c7 [fn] TodoItem key=2
+@c8 [fn] TodoItem key=3
 ```
 
 Profile rendering performance:
@@ -96,9 +96,9 @@ agent-react-devtools profile slow
 
 ```
 Slowest (by avg render time):
-  TodoList             avg:4.2ms  max:8.1ms  renders:6  cause:props
-  SearchBar            avg:2.1ms  max:3.4ms  renders:12 cause:hooks
-  Header               avg:0.8ms  max:1.2ms  renders:3  cause:parent
+  @c5 [fn] TodoList  avg:4.2ms  max:8.1ms  renders:6  causes:props-changed
+  @c4 [fn] SearchBar  avg:2.1ms  max:3.4ms  renders:12  causes:hooks-changed
+  @c2 [fn] Header  avg:0.8ms  max:1.2ms  renders:3  causes:parent-rendered
 ```
 
 ## Commands
