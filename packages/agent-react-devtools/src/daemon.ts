@@ -193,7 +193,6 @@ class Daemon {
 
         case 'profile-stop': {
           await this.bridge.stopProfilingAndCollect();
-          this.tree.getTree(); // populate label maps
           const session = this.profiler.stop(this.tree);
           if (!session) {
             return { ok: false, error: 'No active profiling session' };
@@ -207,7 +206,6 @@ class Daemon {
           if (resolvedCompId === undefined) {
             return { ok: false, error: `Component ${cmd.componentId} not found` };
           }
-          this.tree.getTree(); // populate label maps
           const report = this.profiler.getReport(resolvedCompId, this.tree);
           if (!report) {
             return {
@@ -221,14 +219,12 @@ class Daemon {
         }
 
         case 'profile-slow': {
-          this.tree.getTree(); // populate label maps
           const slowest = this.profiler.getSlowest(this.tree, cmd.limit);
           enrichWithLabels(slowest, this.tree);
           return { ok: true, data: slowest };
         }
 
         case 'profile-rerenders': {
-          this.tree.getTree(); // populate label maps
           const rerenders = this.profiler.getMostRerenders(this.tree, cmd.limit);
           enrichWithLabels(rerenders, this.tree);
           return { ok: true, data: rerenders };
@@ -241,7 +237,6 @@ class Daemon {
           };
 
         case 'profile-commit': {
-          this.tree.getTree(); // populate label maps
           const detail = this.profiler.getCommitDetails(cmd.index, this.tree, cmd.limit);
           if (!detail) {
             return { ok: false, error: `Commit #${cmd.index} not found` };
