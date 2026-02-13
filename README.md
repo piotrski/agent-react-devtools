@@ -226,9 +226,15 @@ You can also install via the Claude Code plugin marketplace:
 /plugin install agent-react-devtools@piotrski
 ```
 
+### Codex
+
+Codex discovers project skills from `AGENTS.md`. This repo includes one at the root that registers:
+
+- `packages/agent-react-devtools/skills/react-devtools/SKILL.md`
+
 ### Manual setup
 
-Alternatively, add something like this to your project's `CLAUDE.md` (or equivalent agent instructions):
+If your assistant does not auto-load skills, add something like this to your project's `AGENTS.md`, `CLAUDE.md`, or equivalent agent instructions:
 
 ```markdown
 ## React Debugging
