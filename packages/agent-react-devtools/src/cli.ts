@@ -82,6 +82,21 @@ function parseArgs(argv: string[]): {
   return { command, flags };
 }
 
+function parseNumericFlag(
+  flags: Record<string, string | boolean>,
+  name: string,
+  defaultValue?: number,
+): number | undefined {
+  const raw = flags[name];
+  if (raw === undefined || raw === true) return defaultValue;
+  const n = parseInt(raw as string, 10);
+  if (isNaN(n)) {
+    console.error(`Invalid value for --${name}: expected a number`);
+    process.exit(1);
+  }
+  return n;
+}
+
 async function main(): Promise<void> {
   const { command, flags } = parseArgs(process.argv.slice(2));
 
@@ -108,7 +123,7 @@ async function main(): Promise<void> {
 
     // ── Daemon management ──
     if (cmd0 === 'start') {
-      const port = flags['port'] ? parseInt(flags['port'] as string, 10) : undefined;
+      const port = parseNumericFlag(flags, 'port');
       await ensureDaemon(port);
       const resp = await sendCommand({ type: 'status' });
       if (resp.ok) {
@@ -149,9 +164,7 @@ async function main(): Promise<void> {
 
     // ── Component inspection ──
     if (cmd0 === 'get' && cmd1 === 'tree') {
-      const depth = flags['depth']
-        ? parseInt(flags['depth'] as string, 10)
-        : undefined;
+      const depth = parseNumericFlag(flags, 'depth');
       const ipcCmd: IpcCommand = { type: 'get-tree', depth };
       const resp = await sendCommand(ipcCmd);
       if (resp.ok) {
@@ -214,7 +227,7 @@ async function main(): Promise<void> {
 
     // ── Wait ──
     if (cmd0 === 'wait') {
-      const timeoutSec = flags['timeout'] ? parseInt(flags['timeout'] as string, 10) : 30;
+      const timeoutSec = parseNumericFlag(flags, 'timeout', 30)!;
       const timeoutMs = timeoutSec * 1000;
       const socketTimeout = timeoutMs + 5000;
 
@@ -294,7 +307,7 @@ async function main(): Promise<void> {
     }
 
     if (cmd0 === 'profile' && cmd1 === 'slow') {
-      const limit = flags['limit'] ? parseInt(flags['limit'] as string, 10) : undefined;
+      const limit = parseNumericFlag(flags, 'limit');
       const resp = await sendCommand({ type: 'profile-slow', limit });
       if (resp.ok) {
         console.log(formatSlowest(resp.data as any));
@@ -306,7 +319,7 @@ async function main(): Promise<void> {
     }
 
     if (cmd0 === 'profile' && cmd1 === 'rerenders') {
-      const limit = flags['limit'] ? parseInt(flags['limit'] as string, 10) : undefined;
+      const limit = parseNumericFlag(flags, 'limit');
       const resp = await sendCommand({ type: 'profile-rerenders', limit });
       if (resp.ok) {
         console.log(formatRerenders(resp.data as any));
@@ -328,7 +341,7 @@ async function main(): Promise<void> {
         console.error('Usage: devtools profile commit <N | #N>');
         process.exit(1);
       }
-      const limit = flags['limit'] ? parseInt(flags['limit'] as string, 10) : undefined;
+      const limit = parseNumericFlag(flags, 'limit');
       const resp = await sendCommand({ type: 'profile-commit', index, limit });
       if (resp.ok) {
         console.log(formatCommitDetail(resp.data as any));
@@ -340,7 +353,7 @@ async function main(): Promise<void> {
     }
 
     if (cmd0 === 'profile' && cmd1 === 'timeline') {
-      const limit = flags['limit'] ? parseInt(flags['limit'] as string, 10) : undefined;
+      const limit = parseNumericFlag(flags, 'limit');
       const resp = await sendCommand({ type: 'profile-timeline', limit });
       if (resp.ok) {
         console.log(formatTimeline(resp.data as any));
