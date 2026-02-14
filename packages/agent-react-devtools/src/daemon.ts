@@ -108,8 +108,10 @@ class Daemon {
 
             try {
               const cmd: IpcCommand = JSON.parse(line);
-              this.handleCommand(cmd).then((response) => {
-                conn.write(JSON.stringify(response) + '\n');
+              this.handleCommand(cmd, conn).then((response) => {
+                if (!conn.destroyed) {
+                  conn.write(JSON.stringify(response) + '\n');
+                }
               });
             } catch {
               const response: IpcResponse = {
@@ -130,7 +132,7 @@ class Daemon {
     });
   }
 
-  private async handleCommand(cmd: IpcCommand): Promise<IpcResponse> {
+  private async handleCommand(cmd: IpcCommand, conn: net.Socket): Promise<IpcResponse> {
     try {
       switch (cmd.type) {
         case 'ping':
@@ -146,14 +148,22 @@ class Daemon {
               componentCount: this.tree.getComponentCount(),
               profilingActive: this.profiler.isActive(),
               uptime: Date.now() - this.startedAt,
+              connection: this.bridge.getConnectionHealth(),
             } satisfies StatusInfo,
           };
 
-        case 'get-tree':
-          return {
-            ok: true,
-            data: this.tree.getTree(cmd.depth),
-          };
+        case 'get-tree': {
+          const treeData = this.tree.getTree(cmd.depth);
+          const response: IpcResponse = { ok: true, data: treeData };
+          if (treeData.length === 0) {
+            const health = this.bridge.getConnectionHealth();
+            if (health.hasEverConnected && health.connectedApps === 0 && health.lastDisconnectAt !== null) {
+              const ago = Math.round((Date.now() - health.lastDisconnectAt) / 1000);
+              response.hint = `app disconnected ${ago}s ago, waiting for reconnect...`;
+            }
+          }
+          return response;
+        }
 
         case 'get-component': {
           const resolvedId = this.tree.resolveId(cmd.id);
@@ -245,6 +255,9 @@ class Daemon {
           return { ok: true, data: detail };
         }
 
+        case 'wait':
+          return this.handleWait(cmd, conn);
+
         default:
           return { ok: false, error: `Unknown command: ${(cmd as any).type}` };
       }
@@ -253,6 +266,56 @@ class Daemon {
         ok: false,
         error: err instanceof Error ? err.message : String(err),
       };
+    }
+  }
+
+  private handleWait(
+    cmd: Extract<IpcCommand, { type: 'wait' }>,
+    conn: net.Socket,
+  ): Promise<IpcResponse> {
+    const timeout = cmd.timeout ?? 30_000;
+
+    // Check if condition is already met
+    if (this.isWaitConditionMet(cmd)) {
+      return Promise.resolve({ ok: true, data: { met: true, condition: cmd.condition } });
+    }
+
+    return new Promise((resolve) => {
+      let settled = false;
+      const settle = (response: IpcResponse) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        unsubscribe();
+        conn.removeListener('close', onClose);
+        resolve(response);
+      };
+
+      const unsubscribe = this.bridge.onStateChange(() => {
+        if (this.isWaitConditionMet(cmd)) {
+          settle({ ok: true, data: { met: true, condition: cmd.condition } });
+        }
+      });
+
+      const timer = setTimeout(() => {
+        settle({ ok: true, data: { met: false, condition: cmd.condition, timeout: true } });
+      }, timeout);
+
+      const onClose = () => {
+        settle({ ok: false, error: 'Client disconnected' });
+      };
+      conn.on('close', onClose);
+    });
+  }
+
+  private isWaitConditionMet(cmd: Extract<IpcCommand, { type: 'wait' }>): boolean {
+    switch (cmd.condition) {
+      case 'connected':
+        return this.bridge.getConnectedAppCount() > 0;
+      case 'component':
+        return this.tree.findByName(cmd.name, true).length > 0;
+      default:
+        return false;
     }
   }
 

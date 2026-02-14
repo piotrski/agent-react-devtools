@@ -9,6 +9,7 @@ interface IpcResponse {
   ok: boolean;
   data?: unknown;
   error?: string;
+  hint?: string;
 }
 
 export interface TestContext {
@@ -93,6 +94,7 @@ export async function waitForDaemon(
 export function sendIpcCommand(
   socketPath: string,
   cmd: { type: string; [key: string]: unknown },
+  socketTimeout = 10_000,
 ): Promise<IpcResponse> {
   return new Promise((resolve, reject) => {
     const conn = net.createConnection(socketPath, () => {
@@ -116,7 +118,7 @@ export function sendIpcCommand(
 
     conn.on('error', reject);
 
-    conn.setTimeout(10_000, () => {
+    conn.setTimeout(socketTimeout, () => {
       conn.destroy();
       reject(new Error('IPC command timed out'));
     });

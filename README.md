@@ -35,6 +35,7 @@ agent-react-devtools status
 Daemon: running (port 8097)
 Apps: 1 connected, 24 components
 Uptime: 12s
+Last event: app connected 3s ago
 ```
 
 Browse the component tree:
@@ -121,6 +122,17 @@ agent-react-devtools count                          # Component count by type
 ```
 
 Components are labeled `@c1`, `@c2`, etc. You can use these labels or numeric IDs interchangeably.
+
+### Wait
+
+Block until a condition is met. Useful in scripts or agent workflows where the daemon starts before the app:
+
+```sh
+agent-react-devtools wait --connected [--timeout 30]          # Block until an app connects
+agent-react-devtools wait --component App [--timeout 30]      # Block until a component appears
+```
+
+Exits with code 0 when the condition is met, or code 1 on timeout.
 
 ### Profiling
 

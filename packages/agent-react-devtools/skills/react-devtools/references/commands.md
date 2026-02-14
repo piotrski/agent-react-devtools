@@ -9,16 +9,23 @@ Start the background daemon. Default port: 8097. The daemon listens for WebSocke
 Stop the daemon process. All connection state is lost.
 
 ### `agent-react-devtools status`
-Show daemon status: port, connected apps, component count, profiling state, uptime.
+Show daemon status: port, connected apps, component count, profiling state, uptime, and last connection event.
 
 Output:
 ```
 Daemon: running (port 8097)
 Apps: 1 connected, 42 components
+Last event: app connected 3s ago
 Uptime: 120s
 ```
 
 If profiling is active, shows `Profiling: active`.
+
+### `agent-react-devtools wait --connected [--timeout S]`
+Block until at least one React app connects via WebSocket. Resolves immediately if already connected. Default timeout: 30s. Exits non-zero on timeout.
+
+### `agent-react-devtools wait --component <name> [--timeout S]`
+Block until a component with the given display name appears in the tree. Uses exact name matching. Useful after a reload to wait for a specific part of the UI to render. Default timeout: 30s. Exits non-zero on timeout.
 
 ## Component Inspection
 
