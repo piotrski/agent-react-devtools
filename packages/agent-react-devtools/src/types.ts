@@ -115,7 +115,9 @@ export type IpcCommand =
   | { type: 'profile-slow'; limit?: number }
   | { type: 'profile-rerenders'; limit?: number }
   | { type: 'profile-timeline'; limit?: number }
-  | { type: 'profile-commit'; index: number; limit?: number };
+  | { type: 'profile-commit'; index: number; limit?: number }
+  | { type: 'wait'; condition: 'connected'; timeout?: number }
+  | { type: 'wait'; condition: 'component'; name: string; timeout?: number };
 
 export interface IpcResponse {
   ok: boolean;

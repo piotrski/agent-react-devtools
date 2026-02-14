@@ -37,6 +37,10 @@ Components:
   find <name> [--exact]         Search by display name
   count                         Component count by type
 
+Wait:
+  wait --connected [--timeout S]       Block until an app connects
+  wait --component <name> [--timeout S]  Block until a component appears
+
 Profiling:
   profile start [name]          Start profiling session
   profile stop                  Stop profiling, collect data
@@ -201,6 +205,43 @@ async function main(): Promise<void> {
       const resp = await sendCommand({ type: 'count' });
       if (resp.ok) {
         console.log(formatCount(resp.data as any));
+      } else {
+        console.error(resp.error);
+        process.exit(1);
+      }
+      return;
+    }
+
+    // ── Wait ──
+    if (cmd0 === 'wait') {
+      const timeoutSec = flags['timeout'] ? parseInt(flags['timeout'] as string, 10) : 30;
+      const timeoutMs = timeoutSec * 1000;
+      const socketTimeout = timeoutMs + 5000;
+
+      let ipcCmd: IpcCommand;
+      if (flags['connected'] !== undefined) {
+        ipcCmd = { type: 'wait', condition: 'connected', timeout: timeoutMs };
+      } else if (flags['component'] !== undefined) {
+        const name = flags['component'] as string;
+        if (!name || name === 'true') {
+          console.error('Usage: devtools wait --component <name> [--timeout S]');
+          process.exit(1);
+        }
+        ipcCmd = { type: 'wait', condition: 'component', name, timeout: timeoutMs };
+      } else {
+        console.error('Usage: devtools wait --connected|--component <name> [--timeout S]');
+        process.exit(1);
+      }
+
+      const resp = await sendCommand(ipcCmd, socketTimeout);
+      if (resp.ok) {
+        const result = resp.data as { met: boolean; condition: string; timeout?: boolean };
+        if (result.met) {
+          console.log(`Condition met: ${result.condition}`);
+        } else {
+          console.error(`Timed out waiting for: ${result.condition}`);
+          process.exit(1);
+        }
       } else {
         console.error(resp.error);
         process.exit(1);

@@ -108,7 +108,7 @@ export function stopDaemon(): boolean {
   }
 }
 
-export function sendCommand(cmd: IpcCommand): Promise<IpcResponse> {
+export function sendCommand(cmd: IpcCommand, socketTimeout = 30_000): Promise<IpcResponse> {
   return new Promise((resolve, reject) => {
     const socketPath = getSocketPath();
 
@@ -135,8 +135,7 @@ export function sendCommand(cmd: IpcCommand): Promise<IpcResponse> {
       reject(new Error(`Cannot connect to daemon: ${err.message}`));
     });
 
-    // Timeout after 30 seconds
-    conn.setTimeout(30_000, () => {
+    conn.setTimeout(socketTimeout, () => {
       conn.destroy();
       reject(new Error('Command timed out'));
     });

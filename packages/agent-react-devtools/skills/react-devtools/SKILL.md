@@ -10,7 +10,7 @@ CLI that connects to a running React or React Native app via the React DevTools 
 
 ## Core Workflow
 
-1. **Ensure connection** — check `agent-react-devtools status`. If the daemon is not running, start it with `agent-react-devtools start`.
+1. **Ensure connection** — check `agent-react-devtools status`. If the daemon is not running, start it with `agent-react-devtools start`. Use `agent-react-devtools wait --connected` to block until a React app connects.
 2. **Inspect** — get the component tree, search for components, inspect props/state/hooks.
 3. **Profile** — start profiling, trigger the interaction (or ask the user to), stop profiling, analyze results.
 4. **Act** — use the data to fix the bug, optimize performance, or explain what's happening.
@@ -22,7 +22,9 @@ CLI that connects to a running React or React Native app via the React DevTools 
 ```bash
 agent-react-devtools start              # Start daemon (auto-starts on first command)
 agent-react-devtools stop               # Stop daemon
-agent-react-devtools status             # Check connection: port, connected apps, component count
+agent-react-devtools status             # Check connection, component count, last event
+agent-react-devtools wait --connected   # Block until a React app connects
+agent-react-devtools wait --component App # Block until a component appears
 ```
 
 ### Component Inspection
@@ -95,6 +97,15 @@ Render causes: `props-changed`, `state-changed`, `hooks-changed`, `parent-render
 
 ## Common Patterns
 
+### Wait for the app to connect after a reload
+
+```bash
+agent-react-devtools wait --connected --timeout 10
+agent-react-devtools get tree
+```
+
+Use this after triggering a page reload or HMR update to avoid querying empty state.
+
 ### Diagnose slow interactions
 
 ```bash
@@ -135,7 +146,7 @@ agent-react-devtools status  # Should show 1 connected app
 
 ## Important Rules
 
-- **Labels reset** when the app reloads or components unmount/remount. Always re-check with `get tree` or `find` after a page reload.
+- **Labels reset** when the app reloads or components unmount/remount. After a reload, use `wait --connected` then re-check with `get tree` or `find`.
 - **`status` first** — if status shows 0 connected apps, the React app is not connected. The user may need to run `npx agent-react-devtools init` in their project first.
 - **Headed browser required** — if using `agent-browser`, always use `--headed` mode. Headless Chromium does not properly load the devtools connect script.
 - **Profile while interacting** — profiling only captures renders that happen between `profile start` and `profile stop`. Make sure the relevant interaction happens during that window.
