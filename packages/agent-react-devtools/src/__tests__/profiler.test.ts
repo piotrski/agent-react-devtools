@@ -140,6 +140,44 @@ describe('Profiler', () => {
     expect(report!.maxDuration).toBe(20);
     expect(report!.causes).toContain('props-changed');
     expect(report!.causes).toContain('hooks-changed');
+    expect(report!.changedKeys.props).toEqual(['theme']);
+    expect(report!.changedKeys.state).toEqual([]);
+    expect(report!.changedKeys.hooks).toEqual([]);
+  });
+
+  it('should deduplicate changed keys across commits', () => {
+    profiler.start('test');
+
+    profiler.processProfilingData({
+      commitData: [
+        {
+          timestamp: 1000,
+          duration: 5,
+          fiberActualDurations: [1, 5],
+          fiberSelfDurations: [1, 5],
+          changeDescriptions: [
+            [1, { props: ['onClick', 'className'], state: ['count'], isFirstMount: false }],
+          ],
+        },
+        {
+          timestamp: 2000,
+          duration: 5,
+          fiberActualDurations: [1, 5],
+          fiberSelfDurations: [1, 5],
+          changeDescriptions: [
+            [1, { props: ['className', 'theme'], state: ['count'], hooks: [0, 2], isFirstMount: false }],
+          ],
+        },
+      ],
+    });
+
+    const report = profiler.getReport(1, tree);
+    expect(report).not.toBeNull();
+    expect(report!.changedKeys.props).toEqual(expect.arrayContaining(['onClick', 'className', 'theme']));
+    expect(report!.changedKeys.props).toHaveLength(3);
+    expect(report!.changedKeys.state).toEqual(['count']);
+    expect(report!.changedKeys.hooks).toEqual(expect.arrayContaining([0, 2]));
+    expect(report!.changedKeys.hooks).toHaveLength(2);
   });
 
   it('should find slowest components', () => {

@@ -97,8 +97,8 @@ agent-react-devtools profile slow
 
 ```
 Slowest (by avg render time):
-  @c5 [fn] TodoList  avg:4.2ms  max:8.1ms  renders:6  causes:props-changed
-  @c4 [fn] SearchBar  avg:2.1ms  max:3.4ms  renders:12  causes:hooks-changed
+  @c5 [fn] TodoList  avg:4.2ms  max:8.1ms  renders:6  causes:props-changed  changed: props: items, onDelete
+  @c4 [fn] SearchBar  avg:2.1ms  max:3.4ms  renders:12  causes:hooks-changed  changed: hooks: #0
   @c2 [fn] Header  avg:0.8ms  max:1.2ms  renders:3  causes:parent-rendered
 ```
 

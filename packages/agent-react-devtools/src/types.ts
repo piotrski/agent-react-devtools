@@ -64,6 +64,12 @@ export interface ChangeDescription {
   hooks: number[] | null;
 }
 
+export interface ChangedKeys {
+  props: string[];
+  state: string[];
+  hooks: number[];
+}
+
 export interface ComponentRenderReport {
   id: number;
   displayName: string;
@@ -74,6 +80,7 @@ export interface ComponentRenderReport {
   avgDuration: number;
   maxDuration: number;
   causes: RenderCause[];
+  changedKeys?: ChangedKeys;
 }
 
 export type RenderCause =
