@@ -66,11 +66,11 @@ export class DevToolsBridge {
       this.wss.on('connection', (ws) => {
         this.connections.add(ws);
 
-        // Determine if this is a reconnection (disconnect happened recently)
-        const eventType = this.lastDisconnectAt !== null &&
-          (Date.now() - this.lastDisconnectAt) < this.reconnectWindowMs
-          ? 'reconnected' as const
-          : 'connected' as const;
+        // Reconnect = going from 0 to 1 connected app shortly after a disconnect
+        const wasDisconnected = this.connections.size === 1 &&
+          this.lastDisconnectAt !== null &&
+          (Date.now() - this.lastDisconnectAt) < this.reconnectWindowMs;
+        const eventType = wasDisconnected ? 'reconnected' as const : 'connected' as const;
         this.hasEverConnected = true;
         this.lastDisconnectAt = null;
         this.pushEvent({ type: eventType, timestamp: Date.now() });

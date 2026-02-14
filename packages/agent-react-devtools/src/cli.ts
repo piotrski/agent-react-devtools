@@ -222,12 +222,11 @@ async function main(): Promise<void> {
       if (flags['connected'] !== undefined) {
         ipcCmd = { type: 'wait', condition: 'connected', timeout: timeoutMs };
       } else if (flags['component'] !== undefined) {
-        const name = flags['component'] as string;
-        if (!name || name === 'true') {
+        if (typeof flags['component'] !== 'string') {
           console.error('Usage: devtools wait --component <name> [--timeout S]');
           process.exit(1);
         }
-        ipcCmd = { type: 'wait', condition: 'component', name, timeout: timeoutMs };
+        ipcCmd = { type: 'wait', condition: 'component', name: flags['component'], timeout: timeoutMs };
       } else {
         console.error('Usage: devtools wait --connected|--component <name> [--timeout S]');
         process.exit(1);
