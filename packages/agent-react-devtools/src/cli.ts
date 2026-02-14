@@ -151,7 +151,7 @@ async function main(): Promise<void> {
       const ipcCmd: IpcCommand = { type: 'get-tree', depth };
       const resp = await sendCommand(ipcCmd);
       if (resp.ok) {
-        console.log(formatTree(resp.data as any));
+        console.log(formatTree(resp.data as any, resp.hint));
       } else {
         console.error(resp.error);
         process.exit(1);

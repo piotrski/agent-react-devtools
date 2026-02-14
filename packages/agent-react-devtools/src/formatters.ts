@@ -40,8 +40,10 @@ const TEE = '├─ ';
 const ELBOW = '└─ ';
 const SPACE = '   ';
 
-export function formatTree(nodes: TreeNode[]): string {
-  if (nodes.length === 0) return 'No components (is a React app connected?)';
+export function formatTree(nodes: TreeNode[], hint?: string): string {
+  if (nodes.length === 0) {
+    return hint ? `No components (${hint})` : 'No components (is a React app connected?)';
+  }
 
   // Build tree structure from the flat list
   const childrenMap = new Map<number | null, TreeNode[]>();
@@ -150,7 +152,21 @@ export function formatStatus(status: StatusInfo): string {
   }
   const upSec = Math.round(status.uptime / 1000);
   lines.push(`Uptime: ${upSec}s`);
+  if (status.connection?.recentEvents?.length > 0) {
+    const last = status.connection.recentEvents[status.connection.recentEvents.length - 1];
+    const ago = formatAgo(Date.now() - last.timestamp);
+    lines.push(`Last event: app ${last.type} ${ago}`);
+  }
   return lines.join('\n');
+}
+
+export function formatAgo(ms: number): string {
+  const sec = Math.round(ms / 1000);
+  if (sec < 60) return `${sec}s ago`;
+  const min = Math.round(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.round(min / 60);
+  return `${hr}h ago`;
 }
 
 export function formatProfileSummary(summary: ProfileSummary): string {

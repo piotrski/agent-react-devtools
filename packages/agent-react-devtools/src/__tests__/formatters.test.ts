@@ -5,6 +5,7 @@ import {
   formatSearchResults,
   formatCount,
   formatStatus,
+  formatAgo,
   formatProfileSummary,
   formatProfileReport,
   formatSlowest,
@@ -13,12 +14,18 @@ import {
   formatCommitDetail,
 } from '../formatters.js';
 import type { TreeNode } from '../component-tree.js';
-import type { InspectedElement, StatusInfo, ComponentRenderReport } from '../types.js';
+import type { InspectedElement, StatusInfo, ComponentRenderReport, ConnectionHealth } from '../types.js';
 import type { ProfileSummary, TimelineEntry, CommitDetail } from '../profiler.js';
 
 describe('formatTree', () => {
   it('should format empty tree', () => {
     expect(formatTree([])).toContain('No components');
+    expect(formatTree([])).toContain('is a React app connected?');
+  });
+
+  it('should show hint when provided for empty tree', () => {
+    const result = formatTree([], 'app disconnected 5s ago, waiting for reconnect...');
+    expect(result).toBe('No components (app disconnected 5s ago, waiting for reconnect...)');
   });
 
   it('should format a simple tree', () => {
@@ -123,6 +130,13 @@ describe('formatCount', () => {
 });
 
 describe('formatStatus', () => {
+  const baseConnection: ConnectionHealth = {
+    connectedApps: 1,
+    hasEverConnected: true,
+    lastDisconnectAt: null,
+    recentEvents: [],
+  };
+
   it('should format status info', () => {
     const status: StatusInfo = {
       daemonRunning: true,
@@ -131,6 +145,7 @@ describe('formatStatus', () => {
       componentCount: 47,
       profilingActive: false,
       uptime: 12000,
+      connection: baseConnection,
     };
 
     const result = formatStatus(status);
@@ -138,6 +153,64 @@ describe('formatStatus', () => {
     expect(result).toContain('8097');
     expect(result).toContain('1 connected');
     expect(result).toContain('47 components');
+  });
+
+  it('should show last connection event', () => {
+    const now = Date.now();
+    const status: StatusInfo = {
+      daemonRunning: true,
+      port: 8097,
+      connectedApps: 1,
+      componentCount: 10,
+      profilingActive: false,
+      uptime: 5000,
+      connection: {
+        ...baseConnection,
+        recentEvents: [
+          { type: 'connected', timestamp: now - 3000 },
+        ],
+      },
+    };
+
+    const result = formatStatus(status);
+    expect(result).toContain('Last event: app connected 3s ago');
+  });
+
+  it('should show reconnected event', () => {
+    const now = Date.now();
+    const status: StatusInfo = {
+      daemonRunning: true,
+      port: 8097,
+      connectedApps: 1,
+      componentCount: 10,
+      profilingActive: false,
+      uptime: 5000,
+      connection: {
+        ...baseConnection,
+        recentEvents: [
+          { type: 'disconnected', timestamp: now - 4000 },
+          { type: 'reconnected', timestamp: now - 2000 },
+        ],
+      },
+    };
+
+    const result = formatStatus(status);
+    expect(result).toContain('Last event: app reconnected 2s ago');
+  });
+
+  it('should not show events line when no events', () => {
+    const status: StatusInfo = {
+      daemonRunning: true,
+      port: 8097,
+      connectedApps: 0,
+      componentCount: 0,
+      profilingActive: false,
+      uptime: 1000,
+      connection: baseConnection,
+    };
+
+    const result = formatStatus(status);
+    expect(result).not.toContain('Last event');
   });
 });
 

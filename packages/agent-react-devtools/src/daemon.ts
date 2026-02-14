@@ -146,14 +146,22 @@ class Daemon {
               componentCount: this.tree.getComponentCount(),
               profilingActive: this.profiler.isActive(),
               uptime: Date.now() - this.startedAt,
+              connection: this.bridge.getConnectionHealth(),
             } satisfies StatusInfo,
           };
 
-        case 'get-tree':
-          return {
-            ok: true,
-            data: this.tree.getTree(cmd.depth),
-          };
+        case 'get-tree': {
+          const treeData = this.tree.getTree(cmd.depth);
+          const response: IpcResponse = { ok: true, data: treeData };
+          if (treeData.length === 0) {
+            const health = this.bridge.getConnectionHealth();
+            if (health.hasEverConnected && health.connectedApps === 0 && health.lastDisconnectAt !== null) {
+              const ago = Math.round((Date.now() - health.lastDisconnectAt) / 1000);
+              response.hint = `app disconnected ${ago}s ago, waiting for reconnect...`;
+            }
+          }
+          return response;
+        }
 
         case 'get-component': {
           const resolvedId = this.tree.resolveId(cmd.id);

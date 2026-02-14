@@ -1,7 +1,7 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import type { ComponentTree } from './component-tree.js';
 import type { Profiler } from './profiler.js';
-import type { InspectedElement } from './types.js';
+import type { InspectedElement, ConnectionHealth, ConnectionEvent } from './types.js';
 
 /**
  * React DevTools protocol bridge.
@@ -41,6 +41,11 @@ export class DevToolsBridge {
   private rendererIds = new Set<number>();
   /** Track which root fiber IDs belong to each WebSocket connection */
   private connectionRoots = new Map<WebSocket, Set<number>>();
+  private hasEverConnected = false;
+  private lastDisconnectAt: number | null = null;
+  private recentEvents: ConnectionEvent[] = [];
+  private reconnectWindowMs = 5000;
+  private stateChangeListeners = new Set<() => void>();
 
   constructor(port: number, tree: ComponentTree, profiler: Profiler) {
     this.port = port;
@@ -60,6 +65,16 @@ export class DevToolsBridge {
 
       this.wss.on('connection', (ws) => {
         this.connections.add(ws);
+
+        // Determine if this is a reconnection (disconnect happened recently)
+        const eventType = this.lastDisconnectAt !== null &&
+          (Date.now() - this.lastDisconnectAt) < this.reconnectWindowMs
+          ? 'reconnected' as const
+          : 'connected' as const;
+        this.hasEverConnected = true;
+        this.lastDisconnectAt = null;
+        this.pushEvent({ type: eventType, timestamp: Date.now() });
+        this.notifyStateChange();
 
         ws.on('message', (data) => {
           try {
@@ -248,6 +263,8 @@ export class DevToolsBridge {
         this.profiler.trackComponent(node.id, node.displayName);
       }
     }
+
+    this.notifyStateChange();
   }
 
   private cleanupConnection(ws: WebSocket): void {
@@ -260,6 +277,9 @@ export class DevToolsBridge {
       }
       this.connectionRoots.delete(ws);
     }
+    this.lastDisconnectAt = Date.now();
+    this.pushEvent({ type: 'disconnected', timestamp: Date.now() });
+    this.notifyStateChange();
   }
 
   private handleInspectedElement(payload: unknown): void {
@@ -327,6 +347,33 @@ export class DevToolsBridge {
         this.pendingProfilingCollect = null;
         pending.resolve();
       }
+    }
+  }
+
+  getConnectionHealth(): ConnectionHealth {
+    return {
+      connectedApps: this.connections.size,
+      hasEverConnected: this.hasEverConnected,
+      lastDisconnectAt: this.lastDisconnectAt,
+      recentEvents: [...this.recentEvents],
+    };
+  }
+
+  onStateChange(listener: () => void): () => void {
+    this.stateChangeListeners.add(listener);
+    return () => { this.stateChangeListeners.delete(listener); };
+  }
+
+  private pushEvent(event: ConnectionEvent): void {
+    this.recentEvents.push(event);
+    if (this.recentEvents.length > 20) {
+      this.recentEvents = this.recentEvents.slice(-20);
+    }
+  }
+
+  private notifyStateChange(): void {
+    for (const listener of this.stateChangeListeners) {
+      listener();
     }
   }
 

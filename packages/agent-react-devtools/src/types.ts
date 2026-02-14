@@ -84,6 +84,22 @@ export type RenderCause =
   | 'force-update'
   | 'first-mount';
 
+// ── Connection Health ──
+
+export type ConnectionEventType = 'connected' | 'disconnected' | 'reconnected';
+
+export interface ConnectionEvent {
+  type: ConnectionEventType;
+  timestamp: number;
+}
+
+export interface ConnectionHealth {
+  connectedApps: number;
+  hasEverConnected: boolean;
+  lastDisconnectAt: number | null;
+  recentEvents: ConnectionEvent[];
+}
+
 // ── IPC Commands ──
 
 export type IpcCommand =
@@ -107,6 +123,8 @@ export interface IpcResponse {
   error?: string;
   /** The @cN label, passed through when commands use label-based IDs */
   label?: string;
+  /** Contextual hint for empty or stale results */
+  hint?: string;
 }
 
 // ── Daemon State ──
@@ -125,4 +143,5 @@ export interface StatusInfo {
   componentCount: number;
   profilingActive: boolean;
   uptime: number;
+  connection: ConnectionHealth;
 }
