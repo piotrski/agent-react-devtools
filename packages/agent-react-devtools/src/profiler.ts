@@ -4,6 +4,7 @@ import type {
   ChangeDescription,
   ComponentRenderReport,
   RenderCause,
+  ChangedKeys,
 } from './types.js';
 import type { ComponentTree } from './component-tree.js';
 
@@ -33,6 +34,7 @@ export interface CommitDetail {
     actualDuration: number;
     selfDuration: number;
     causes: RenderCause[];
+    changedKeys?: ChangedKeys;
   }>;
   totalComponents: number;
 }
@@ -208,6 +210,9 @@ export class Profiler {
     let totalDuration = 0;
     let maxDuration = 0;
     const causeSet = new Set<RenderCause>();
+    const propsSet = new Set<string>();
+    const stateSet = new Set<string>();
+    const hooksSet = new Set<number>();
 
     for (const commit of this.session.commits) {
       const duration = commit.fiberActualDurations.get(componentId);
@@ -221,6 +226,10 @@ export class Profiler {
           for (const cause of describeCauses(desc)) {
             causeSet.add(cause);
           }
+          const keys = extractChangedKeys(desc);
+          for (const p of keys.props) propsSet.add(p);
+          for (const s of keys.state) stateSet.add(s);
+          for (const h of keys.hooks) hooksSet.add(h);
         }
       }
     }
@@ -235,6 +244,11 @@ export class Profiler {
       avgDuration: totalDuration / renderCount,
       maxDuration,
       causes: Array.from(causeSet),
+      changedKeys: {
+        props: Array.from(propsSet),
+        state: Array.from(stateSet),
+        hooks: Array.from(hooksSet),
+      },
     };
   }
 
@@ -272,6 +286,7 @@ export class Profiler {
         actualDuration,
         selfDuration,
         causes: desc ? describeCauses(desc) : [],
+        changedKeys: desc ? extractChangedKeys(desc) : { props: [], state: [], hooks: [] },
       });
     }
 
@@ -355,4 +370,12 @@ function describeCauses(desc: ChangeDescription): RenderCause[] {
   // If no specific cause found, it was likely parent-triggered
   if (causes.length === 0) causes.push('parent-rendered');
   return causes;
+}
+
+function extractChangedKeys(desc: ChangeDescription): ChangedKeys {
+  return {
+    props: desc.props ?? [],
+    state: desc.state ?? [],
+    hooks: desc.hooks ?? [],
+  };
 }
