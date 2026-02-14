@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main, changeset-release/main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install
+      - run: bun run typecheck
+
+  unit-tests:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install
+      - run: bun run build
+      - run: bun run test:unit
+
+  e2e-tests:
+    name: E2E tests (protocol)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install
+      - run: bun run build
+      - run: bun run --filter e2e-tests test:protocol
+
+  cli-smoke:
+    name: CLI smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install
+      - run: bun run build
+      - name: Smoke test
+        run: |
+          node packages/agent-react-devtools/dist/cli.js --help || true
+          node packages/agent-react-devtools/dist/cli.js start &
+          sleep 2
+          node packages/agent-react-devtools/dist/cli.js status
+          node packages/agent-react-devtools/dist/cli.js stop
