@@ -2,6 +2,7 @@ import type {
   StatusInfo,
   InspectedElement,
   ComponentRenderReport,
+  ChangedKeys,
 } from './types.js';
 import type { TreeNode } from './component-tree.js';
 import type { ProfileSummary, TimelineEntry, CommitDetail } from './profiler.js';
@@ -197,6 +198,10 @@ export function formatProfileReport(report: ComponentRenderReport, label?: strin
   if (report.causes.length > 0) {
     lines.push(`causes: ${report.causes.join(', ')}`);
   }
+  const keys = formatChangedKeys(report.changedKeys);
+  if (keys) {
+    lines.push(`changed: ${keys}`);
+  }
   return lines.join('\n');
 }
 
@@ -207,9 +212,10 @@ export function formatSlowest(reports: ComponentRenderReport[]): string {
   for (const r of reports) {
     const ref = formatRef({ label: r.label, type: r.type, name: r.displayName });
     const causes = r.causes.length > 0 ? r.causes.join(', ') : '?';
-    lines.push(
-      `  ${ref}  avg:${r.avgDuration.toFixed(1)}ms  max:${r.maxDuration.toFixed(1)}ms  renders:${r.renderCount}  causes:${causes}`,
-    );
+    let line = `  ${ref}  avg:${r.avgDuration.toFixed(1)}ms  max:${r.maxDuration.toFixed(1)}ms  renders:${r.renderCount}  causes:${causes}`;
+    const keys = formatChangedKeys(r.changedKeys);
+    if (keys) line += `  changed: ${keys}`;
+    lines.push(line);
   }
   return lines.join('\n');
 }
@@ -221,9 +227,10 @@ export function formatRerenders(reports: ComponentRenderReport[]): string {
   for (const r of reports) {
     const ref = formatRef({ label: r.label, type: r.type, name: r.displayName });
     const causes = r.causes.length > 0 ? r.causes.join(', ') : '?';
-    lines.push(
-      `  ${ref}  ${r.renderCount} renders  causes:${causes}`,
-    );
+    let line = `  ${ref}  ${r.renderCount} renders  causes:${causes}`;
+    const keys = formatChangedKeys(r.changedKeys);
+    if (keys) line += `  changed: ${keys}`;
+    lines.push(line);
   }
   return lines.join('\n');
 }
@@ -247,13 +254,27 @@ export function formatCommitDetail(detail: CommitDetail): string {
   for (const c of detail.components) {
     const ref = formatRef({ label: c.label, type: c.type, name: c.displayName });
     const causes = c.causes.length > 0 ? c.causes.join(', ') : '?';
-    lines.push(`  ${ref}  self:${c.selfDuration.toFixed(1)}ms  total:${c.actualDuration.toFixed(1)}ms  causes:${causes}`);
+    let line = `  ${ref}  self:${c.selfDuration.toFixed(1)}ms  total:${c.actualDuration.toFixed(1)}ms  causes:${causes}`;
+    const keys = formatChangedKeys(c.changedKeys);
+    if (keys) line += `  changed: ${keys}`;
+    lines.push(line);
   }
   const hidden = detail.totalComponents - detail.components.length;
   if (hidden > 0) {
     lines.push(`  ... ${hidden} more (use --limit to show more)`);
   }
   return lines.join('\n');
+}
+
+// ── Changed-keys helper ──
+
+export function formatChangedKeys(keys: ChangedKeys | undefined): string {
+  if (!keys) return '';
+  const parts: string[] = [];
+  if (keys.props.length > 0) parts.push(`props: ${keys.props.join(', ')}`);
+  if (keys.state.length > 0) parts.push(`state: ${keys.state.join(', ')}`);
+  if (keys.hooks.length > 0) parts.push(`hooks: ${keys.hooks.map((h) => `#${h}`).join(', ')}`);
+  return parts.join('  ');
 }
 
 // ── Helpers ──
