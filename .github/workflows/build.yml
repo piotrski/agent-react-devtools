@@ -25,3 +25,6 @@ jobs:
 
       - name: Unit tests
         run: bun run test:unit
+
+      - name: E2E tests (protocol)
+        run: bun run --filter e2e-tests test:protocol

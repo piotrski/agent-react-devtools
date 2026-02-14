@@ -1,0 +1,21 @@
+{
+  "name": "e2e-tests",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "pretest": "bun run --filter agent-react-devtools build",
+    "pretest:protocol": "bun run --filter agent-react-devtools build",
+    "pretest:browser": "bun run --filter agent-react-devtools build",
+    "test": "vitest run",
+    "test:protocol": "vitest run --exclude src/browser.test.ts",
+    "test:browser": "vitest run src/browser.test.ts"
+  },
+  "devDependencies": {
+    "vitest": "^2.0.0",
+    "@types/node": "^22.0.0",
+    "ws": "^8.18.0",
+    "@types/ws": "^8.5.0",
+    "playwright": "^1.50.0"
+  }
+}
