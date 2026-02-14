@@ -65,21 +65,31 @@ Stop profiling and collect data from React. Shows a summary with duration, commi
 ### `agent-react-devtools profile slow [--limit N]`
 Rank components by average render duration (slowest first). Default limit: 10.
 
-Output columns: label, type tag, component name, avg duration, max duration, render count, all causes.
+Output columns: label, type tag, component name, avg duration, max duration, render count, all causes, changed keys.
 
 ### `agent-react-devtools profile rerenders [--limit N]`
 Rank components by render count (most re-renders first). Default limit: 10.
 
-Output columns: label, type tag, component name, render count, all causes.
+Output columns: label, type tag, component name, render count, all causes, changed keys.
 
 ### `agent-react-devtools profile report <@cN | id>`
-Detailed render report for a single component: render count, avg/max/total duration, all render causes.
+Detailed render report for a single component: render count, avg/max/total duration, all render causes, changed keys.
 
 ### `agent-react-devtools profile timeline [--limit N]`
 Chronological list of React commits during the profiling session. Each entry: index, duration, component count.
 
 ### `agent-react-devtools profile commit <N | #N> [--limit N]`
-Detail for a specific commit by index. Shows per-component self/total duration and render causes.
+Detail for a specific commit by index. Shows per-component self/total duration, render causes, and changed keys.
+
+### Changed Keys
+
+When React DevTools reports which specific props, state keys, or hooks triggered a re-render, profiling commands append a `changed:` suffix:
+
+```
+changed: props: onClick, className  state: count  hooks: #0
+```
+
+Categories with no changes are omitted. Keys are deduplicated across commits in aggregate reports (`profile slow`, `profile rerenders`, `profile report`).
 
 ## Setup
 

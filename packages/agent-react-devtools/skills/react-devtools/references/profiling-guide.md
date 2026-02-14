@@ -59,15 +59,15 @@ Once you identify a suspect, get its full render report:
 agent-react-devtools profile report @c12
 ```
 
-This shows all render causes. Common patterns:
+This shows all render causes and the specific changed keys (e.g. `changed: props: onClick, className  state: count`). Use the changed keys to pinpoint exactly what to stabilize or investigate. Common patterns:
 
-| Cause | Meaning | Typical Fix |
-|-------|---------|-------------|
-| `parent-rendered` | Parent re-rendered, child has no bailout | Wrap child in `React.memo()` |
-| `props-changed` | Received new prop references | Stabilize with `useMemo`/`useCallback` in parent |
-| `state-changed` | Component's own state changed | Check if state update is necessary |
-| `hooks-changed` | A hook dependency changed | Review hook dependencies |
-| `first-mount` | Initial render | Normal — not a problem |
+| Cause | Changed keys example | Meaning | Typical Fix |
+|-------|---------------------|---------|-------------|
+| `parent-rendered` | _(none)_ | Parent re-rendered, child has no bailout | Wrap child in `React.memo()` |
+| `props-changed` | `props: onClick, style` | Received new prop references | Stabilize the listed props with `useMemo`/`useCallback` in parent |
+| `state-changed` | `state: count, filter` | Component's own state changed | Check if the listed state updates are necessary |
+| `hooks-changed` | `hooks: #0, #2` | A hook dependency changed | Review deps of the listed hooks (by index) |
+| `first-mount` | _(none)_ | Initial render | Normal — not a problem |
 
 ### 5. Inspect the Component
 
@@ -101,7 +101,7 @@ Compare render counts and durations to confirm improvement.
 A parent component re-renders (e.g., from a timer or context change) and all children re-render because none use `React.memo`. Look for high re-render counts with `parent-rendered` cause.
 
 ### Unstable prop references
-Parent passes `onClick={() => ...}` or `style={{...}}` inline — creates new references every render, defeating `memo()`. The child shows `props-changed` as the cause even though the values are semantically identical.
+Parent passes `onClick={() => ...}` or `style={{...}}` inline — creates new references every render, defeating `memo()`. The child shows `props-changed` as the cause even though the values are semantically identical. The `changed:` output tells you exactly which props are the culprits (e.g. `changed: props: onClick, style`).
 
 ### Expensive computations without memoization
 A component does heavy work (filtering, sorting, formatting) on every render. Shows up as high avg render time. Fix with `useMemo`.
