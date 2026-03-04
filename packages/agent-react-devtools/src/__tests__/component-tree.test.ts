@@ -226,4 +226,116 @@ describe('ComponentTree', () => {
     expect(tree.getNode(6)!.type).toBe('profiler');
     expect(tree.getNode(7)!.type).toBe('suspense');
   });
+
+  describe('UPDATE_ERRORS_OR_WARNINGS', () => {
+    it('should store error and warning counts on nodes', () => {
+      const ops = buildOps(1, 100, ['App', 'Form'], (s) => [
+        ...addOp(1, 5, 0, s('App')),
+        ...addOp(2, 5, 1, s('Form')),
+      ]);
+      tree.applyOperations(ops);
+
+      // Operation type 5 = UPDATE_ERRORS_OR_WARNINGS: opcode, id, numErrors, numWarnings
+      const errorOps = [1, 100, 0, 5, 2, 1, 3];
+      tree.applyOperations(errorOps);
+
+      const node = tree.getNode(2);
+      expect(node).toBeDefined();
+      expect(node!.errors).toBe(1);
+      expect(node!.warnings).toBe(3);
+
+      // App should still have zero counts
+      expect(tree.getNode(1)!.errors).toBe(0);
+      expect(tree.getNode(1)!.warnings).toBe(0);
+    });
+
+    it('should update counts when a second errors operation arrives', () => {
+      const ops = buildOps(1, 100, ['App'], (s) => [
+        ...addOp(1, 5, 0, s('App')),
+      ]);
+      tree.applyOperations(ops);
+
+      tree.applyOperations([1, 100, 0, 5, 1, 2, 0]);
+      expect(tree.getNode(1)!.errors).toBe(2);
+      expect(tree.getNode(1)!.warnings).toBe(0);
+
+      // Counts are replaced, not accumulated
+      tree.applyOperations([1, 100, 0, 5, 1, 0, 5]);
+      expect(tree.getNode(1)!.errors).toBe(0);
+      expect(tree.getNode(1)!.warnings).toBe(5);
+    });
+
+    it('should initialize errors and warnings to zero', () => {
+      const ops = buildOps(1, 100, ['App'], (s) => [
+        ...addOp(1, 5, 0, s('App')),
+      ]);
+      tree.applyOperations(ops);
+
+      expect(tree.getNode(1)!.errors).toBe(0);
+      expect(tree.getNode(1)!.warnings).toBe(0);
+    });
+  });
+
+  describe('getComponentsWithErrorsOrWarnings', () => {
+    it('should return only components with non-zero errors or warnings', () => {
+      const ops = buildOps(1, 100, ['App', 'Form', 'Button'], (s) => [
+        ...addOp(1, 5, 0, s('App')),
+        ...addOp(2, 5, 1, s('Form')),
+        ...addOp(3, 5, 1, s('Button')),
+      ]);
+      tree.applyOperations(ops);
+
+      // Give Form errors and Button warnings
+      tree.applyOperations([1, 100, 0, 5, 2, 3, 0]);  // Form: 3 errors
+      tree.applyOperations([1, 100, 0, 5, 3, 0, 2]);  // Button: 2 warnings
+
+      // Need to call getTree first to assign labels
+      tree.getTree();
+
+      const results = tree.getComponentsWithErrorsOrWarnings();
+      expect(results).toHaveLength(2);
+      expect(results.map((r) => r.displayName).sort()).toEqual(['Button', 'Form']);
+
+      const form = results.find((r) => r.displayName === 'Form')!;
+      expect(form.errors).toBe(3);
+      expect(form.warnings).toBeUndefined();
+
+      const button = results.find((r) => r.displayName === 'Button')!;
+      expect(button.errors).toBeUndefined();
+      expect(button.warnings).toBe(2);
+    });
+
+    it('should return empty array when no components have errors', () => {
+      const ops = buildOps(1, 100, ['App'], (s) => [
+        ...addOp(1, 5, 0, s('App')),
+      ]);
+      tree.applyOperations(ops);
+
+      tree.getTree();
+      const results = tree.getComponentsWithErrorsOrWarnings();
+      expect(results).toHaveLength(0);
+    });
+  });
+
+  describe('tree output includes error annotations', () => {
+    it('should include errors/warnings on tree nodes when non-zero', () => {
+      const ops = buildOps(1, 100, ['App', 'Form'], (s) => [
+        ...addOp(1, 5, 0, s('App')),
+        ...addOp(2, 5, 1, s('Form')),
+      ]);
+      tree.applyOperations(ops);
+
+      tree.applyOperations([1, 100, 0, 5, 2, 1, 2]);
+
+      const treeNodes = tree.getTree();
+      const formNode = treeNodes.find((n) => n.displayName === 'Form')!;
+      expect(formNode.errors).toBe(1);
+      expect(formNode.warnings).toBe(2);
+
+      // App has no errors/warnings, so they should be omitted
+      const appNode = treeNodes.find((n) => n.displayName === 'App')!;
+      expect(appNode.errors).toBeUndefined();
+      expect(appNode.warnings).toBeUndefined();
+    });
+  });
 });

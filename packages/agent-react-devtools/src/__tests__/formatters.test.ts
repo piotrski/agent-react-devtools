@@ -4,6 +4,7 @@ import {
   formatComponent,
   formatSearchResults,
   formatCount,
+  formatErrors,
   formatStatus,
   formatAgo,
   formatProfileSummary,
@@ -425,6 +426,75 @@ describe('formatCommitDetail', () => {
     const result = formatCommitDetail(detail);
     expect(result).toContain('App');
     expect(result).not.toContain('changed:');
+  });
+});
+
+describe('formatErrors', () => {
+  it('should format empty results', () => {
+    expect(formatErrors([])).toContain('No components with errors or warnings');
+  });
+
+  it('should format components with errors and warnings', () => {
+    const nodes: TreeNode[] = [
+      { id: 2, label: '@c2', displayName: 'Form', type: 'function', key: null, parentId: 1, children: [], depth: 1, errors: 3, warnings: 0 },
+      { id: 3, label: '@c3', displayName: 'Input', type: 'function', key: null, parentId: 2, children: [], depth: 2, warnings: 2 },
+    ];
+
+    const result = formatErrors(nodes);
+    expect(result).toContain('@c2 [fn] Form');
+    expect(result).toContain('✗3');
+    expect(result).toContain('@c3 [fn] Input');
+    expect(result).toContain('⚠2');
+  });
+});
+
+describe('error annotations in tree', () => {
+  it('should annotate tree nodes with errors and warnings', () => {
+    const nodes: TreeNode[] = [
+      { id: 1, label: '@c1', displayName: 'App', type: 'function', key: null, parentId: null, children: [2], depth: 0 },
+      { id: 2, label: '@c2', displayName: 'Form', type: 'function', key: null, parentId: 1, children: [], depth: 1, errors: 1, warnings: 2 },
+    ];
+
+    const result = formatTree(nodes);
+    expect(result).toContain('@c2 [fn] Form ⚠2 ✗1');
+    // App should not have annotations
+    expect(result).toContain('@c1 [fn] App\n');
+  });
+});
+
+describe('error annotations in component', () => {
+  it('should show error/warning annotations when non-zero', () => {
+    const element: InspectedElement & { errors?: number; warnings?: number } = {
+      id: 5,
+      displayName: 'Form',
+      type: 'function',
+      key: null,
+      props: {},
+      state: null,
+      hooks: null,
+      renderedAt: null,
+      errors: 2,
+      warnings: 1,
+    };
+
+    const result = formatComponent(element, '@c5');
+    expect(result).toContain('@c5 [fn] Form ⚠1 ✗2');
+  });
+
+  it('should not show annotations when counts are zero', () => {
+    const element: InspectedElement = {
+      id: 5,
+      displayName: 'Form',
+      type: 'function',
+      key: null,
+      props: {},
+      state: null,
+      hooks: null,
+      renderedAt: null,
+    };
+
+    const result = formatComponent(element, '@c5');
+    expect(result).toBe('@c5 [fn] Form');
   });
 });
 
