@@ -36,6 +36,7 @@ agent-react-devtools get component @c5  # Props, state, hooks for a specific com
 agent-react-devtools find Button        # Search by display name (fuzzy)
 agent-react-devtools find Button --exact # Exact match
 agent-react-devtools count              # Count by type: fn, cls, host, memo, ...
+agent-react-devtools errors             # List components with errors or warnings
 ```
 
 ### Performance Profiling
@@ -67,6 +68,8 @@ Every component gets a stable label like `@c1`, `@c2`. Use these to reference co
 ```
 
 Type abbreviations: `fn` = function, `cls` = class, `host` = DOM element, `memo` = React.memo, `fRef` = forwardRef, `susp` = Suspense, `ctx` = context.
+
+Components with errors or warnings show annotations: `⚠2` = 2 warnings, `✗1` = 1 error. Use `agent-react-devtools errors` to list only affected components.
 
 ### Inspected Component
 

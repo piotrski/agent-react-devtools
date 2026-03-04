@@ -54,6 +54,19 @@ Returns a flat list of matching components with labels, types, and keys.
 ### `agent-react-devtools count`
 Count components by type. Output: `42 components (fn:25 host:12 memo:3 cls:2)`.
 
+### `agent-react-devtools errors`
+List all components that have non-zero error or warning counts. React tracks console errors and warnings per component; this command surfaces them.
+
+Output example:
+```
+@c5 [fn] Form ⚠2 ✗1
+@c8 [fn] Input ✗3
+```
+
+`⚠N` = N warnings, `✗N` = N errors. Returns "No components with errors or warnings" when everything is clean.
+
+Error/warning annotations also appear in `get tree`, `get component`, and `find` output when counts are non-zero.
+
 ## Profiling
 
 ### `agent-react-devtools profile start [name]`
