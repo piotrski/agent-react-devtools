@@ -57,6 +57,11 @@ const isProd =
 // This MUST happen at module evaluation time — if deferred to an async
 // callback, react-dom may initialize first and miss the hook entirely.
 if (!isSSR && !isProd) {
+  // Save any existing inject wrapper (e.g., react-refresh runtime from
+  // @vitejs/plugin-react) before replacing the hook stub.
+  const oldHook = (window as any).__REACT_DEVTOOLS_GLOBAL_HOOK__;
+  const oldInject = oldHook?.inject;
+
   // Remove Vite's plugin-react hook stub so react-devtools-core can install the full hook
   try {
     delete (window as any).__REACT_DEVTOOLS_GLOBAL_HOOK__;
@@ -65,6 +70,24 @@ if (!isSSR && !isProd) {
   }
 
   initialize();
+
+  // If the old hook had a wrapped inject (from react-refresh runtime),
+  // re-apply it so Fast Refresh / HMR continues to work. The refresh
+  // wrapper inspects the `injected` argument to capture scheduleRefresh;
+  // calling it after the real inject ensures both devtools and HMR work.
+  const newHook = (window as any).__REACT_DEVTOOLS_GLOBAL_HOOK__;
+  if (oldInject && newHook && oldInject !== newHook.inject) {
+    const realInject = newHook.inject;
+    newHook.inject = function (injected: unknown) {
+      const id = realInject.apply(this, arguments);
+      try {
+        oldInject.call(this, injected);
+      } catch {
+        // Ignore errors from the old stub inject
+      }
+      return id;
+    };
+  }
 }
 
 export const ready: Promise<void> = isSSR || isProd ? noop() : connect();
