@@ -1,5 +1,46 @@
 # agent-react-devtools
 
+## 0.3.0
+
+### Minor Changes
+
+- e9c8a60: Show connection health in `status` and `get tree`
+
+  - Show last connection event in `status` (e.g. "app reconnected 3s ago")
+  - Show contextual hint when `get tree` returns empty after a disconnect
+
+- 20ce273: Standardize component reference format across all CLI output
+
+  All formatters now produce consistent `@cN [type] Name` references. Previously, tree and search commands used `@c1 [fn] "Name"` while profiling commands omitted labels, type tags, or both.
+
+  **Breaking changes to output format:**
+
+  - Component names are no longer quoted: `@c1 [fn] App` instead of `@c1 [fn] "App"`
+  - Keys use `key=value` instead of `key="value"`
+  - Profiling commands (`profile slow`, `profile rerenders`, `profile stop`, `profile commit`) now include `@cN` labels and `[type]` tags
+  - `profile slow` and `profile rerenders` show all render causes instead of only the first
+  - `profile report` now includes a `[type]` tag in the header
+  - Column-aligned padding removed from profiling output in favor of consistent `formatRef` formatting
+
+- 05090ca: Surface specific changed prop/state/hook keys in profiling output
+
+  Profiling reports and commit details now show _which_ props, state keys, and hooks changed, not just _that_ they changed.
+
+  - `profile report` and `profile slow` append `changed: props: onClick, className  state: count` lines
+  - `profile rerenders` and `profile commit` include the same detail per component
+  - Keys are deduplicated across commits in aggregate reports
+  - Empty keys produce no extra output (backward-compatible)
+
+- e9c8a60: Add `wait` command
+
+  - `wait --connected` — block until a React app connects
+  - `wait --component <name>` — block until a named component appears in the tree
+  - Both support `--timeout` (default 30s) and exit non-zero on timeout
+
+### Patch Changes
+
+- 303f9e4: Fixed Vite HMR (hot module replacement) breaking when the `reactDevtools()` plugin is added to `vite.config.ts`. The connect module now preserves the react-refresh runtime's inject wrapper when replacing the devtools hook, so both Fast Refresh and devtools inspection work correctly.
+
 ## 0.2.2
 
 ### Patch Changes
