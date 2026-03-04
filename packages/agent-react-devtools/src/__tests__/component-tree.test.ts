@@ -226,4 +226,85 @@ describe('ComponentTree', () => {
     expect(tree.getNode(6)!.type).toBe('profiler');
     expect(tree.getNode(7)!.type).toBe('suspense');
   });
+
+  describe('host filtering (noHost)', () => {
+    it('should filter out plain host components', () => {
+      const ops = buildOps(1, 100, ['App', 'div', 'span', 'Header'], (s) => [
+        ...addOp(1, 5, 0, s('App')),       // function
+        ...addOp(2, 7, 1, s('div')),        // host
+        ...addOp(3, 5, 2, s('Header')),     // function inside div
+        ...addOp(4, 7, 1, s('span')),       // host
+      ]);
+      tree.applyOperations(ops);
+      expect(tree.getComponentCount()).toBe(4);
+
+      const filtered = tree.getTree({ noHost: true });
+      const names = filtered.map((n) => n.displayName);
+      expect(names).toEqual(['App', 'Header']);
+    });
+
+    it('should keep host components with keys', () => {
+      const ops = buildOps(1, 100, ['App', 'li', 'item-1'], (s) => [
+        ...addOp(1, 5, 0, s('App')),
+        ...addOp(2, 7, 1, s('li'), s('item-1')), // host with key
+      ]);
+      tree.applyOperations(ops);
+
+      const filtered = tree.getTree({ noHost: true });
+      expect(filtered.map((n) => n.displayName)).toEqual(['App', 'li']);
+    });
+
+    it('should keep custom elements (names with hyphens)', () => {
+      const ops = buildOps(1, 100, ['App', 'my-component'], (s) => [
+        ...addOp(1, 5, 0, s('App')),
+        ...addOp(2, 7, 1, s('my-component')), // custom element
+      ]);
+      tree.applyOperations(ops);
+
+      const filtered = tree.getTree({ noHost: true });
+      expect(filtered.map((n) => n.displayName)).toEqual(['App', 'my-component']);
+    });
+
+    it('should promote children of filtered host nodes', () => {
+      // App > div > Header (div should be filtered, Header promoted)
+      const ops = buildOps(1, 100, ['App', 'div', 'Header'], (s) => [
+        ...addOp(1, 5, 0, s('App')),
+        ...addOp(2, 7, 1, s('div')),
+        ...addOp(3, 5, 2, s('Header')),
+      ]);
+      tree.applyOperations(ops);
+
+      const filtered = tree.getTree({ noHost: true });
+      expect(filtered).toHaveLength(2);
+      // Header should now show App as parent
+      const header = filtered.find((n) => n.displayName === 'Header')!;
+      expect(header.parentId).toBe(1); // promoted to App
+    });
+
+    it('should include all nodes when noHost is false', () => {
+      const ops = buildOps(1, 100, ['App', 'div', 'Header'], (s) => [
+        ...addOp(1, 5, 0, s('App')),
+        ...addOp(2, 7, 1, s('div')),
+        ...addOp(3, 5, 2, s('Header')),
+      ]);
+      tree.applyOperations(ops);
+
+      const unfiltered = tree.getTree({ noHost: false });
+      expect(unfiltered).toHaveLength(3);
+    });
+
+    it('should combine noHost with maxDepth', () => {
+      const ops = buildOps(1, 100, ['App', 'div', 'Header', 'Deep'], (s) => [
+        ...addOp(1, 5, 0, s('App')),
+        ...addOp(2, 7, 1, s('div')),
+        ...addOp(3, 5, 2, s('Header')),
+        ...addOp(4, 5, 3, s('Deep')),
+      ]);
+      tree.applyOperations(ops);
+
+      // With noHost, div is skipped so Header is at depth 1, Deep at depth 2
+      const filtered = tree.getTree({ noHost: true, maxDepth: 1 });
+      expect(filtered.map((n) => n.displayName)).toEqual(['App', 'Header']);
+    });
+  });
 });
