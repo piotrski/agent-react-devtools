@@ -160,8 +160,15 @@ class Daemon {
           };
 
         case 'get-tree': {
-          const treeData = this.tree.getTree(cmd.depth);
-          const response: IpcResponse = { ok: true, data: treeData };
+          const totalCount = this.tree.getComponentCount();
+          const treeData = this.tree.getTree({
+            maxDepth: cmd.depth,
+            noHost: cmd.noHost,
+          });
+          const response: IpcResponse = {
+            ok: true,
+            data: { nodes: treeData, totalCount, maxLines: cmd.maxLines },
+          };
           if (treeData.length === 0) {
             const health = this.bridge.getConnectionHealth();
             if (health.hasEverConnected && health.connectedApps === 0 && health.lastDisconnectAt !== null) {
