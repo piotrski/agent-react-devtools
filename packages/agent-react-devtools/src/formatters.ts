@@ -42,7 +42,23 @@ const TEE = '├─ ';
 const ELBOW = '└─ ';
 const SPACE = '   ';
 
-export function formatTree(nodes: TreeNode[], hint?: string): string {
+/** Default number of siblings to show before collapsing a run */
+const COLLAPSE_THRESHOLD = 3;
+
+export interface FormatTreeOptions {
+  /** Total component count (before filtering), for the summary footer */
+  totalCount?: number;
+  /** Maximum output lines (hard cap) */
+  maxLines?: number;
+  /** Hint text for empty tree */
+  hint?: string;
+}
+
+export function formatTree(nodes: TreeNode[], hintOrOpts?: string | FormatTreeOptions): string {
+  const opts: FormatTreeOptions =
+    typeof hintOrOpts === 'string' ? { hint: hintOrOpts } : hintOrOpts || {};
+  const { hint, totalCount, maxLines } = opts;
+
   if (nodes.length === 0) {
     return hint ? `No components (${hint})` : 'No components (is a React app connected?)';
   }
@@ -60,28 +76,85 @@ export function formatTree(nodes: TreeNode[], hint?: string): string {
   }
 
   const lines: string[] = [];
+  let truncated = false;
 
-  function walk(nodeId: number, prefix: string, isLast: boolean, isRoot: boolean): void {
+  function addLine(line: string): boolean {
+    // Reserve 1 line for the summary footer if we have a totalCount
+    const reserve = totalCount !== undefined ? 1 : 0;
+    if (maxLines !== undefined && lines.length >= maxLines - reserve) {
+      truncated = true;
+      return false; // signal: stop adding
+    }
+    lines.push(line);
+    return true;
+  }
+
+  function walk(nodeId: number, prefix: string, isLast: boolean, isRoot: boolean): boolean {
     const node = nodes.find((n) => n.id === nodeId);
-    if (!node) return;
+    if (!node) return true;
 
     const connector = isRoot ? '' : isLast ? ELBOW : TEE;
     const line = formatRef({ label: node.label, type: node.type, name: node.displayName, key: node.key });
 
-    lines.push(`${prefix}${connector}${line}`);
+    if (!addLine(`${prefix}${connector}${line}`)) return false;
 
     const children = childrenMap.get(node.id) || [];
     const childPrefix = isRoot ? '' : prefix + (isLast ? SPACE : PIPE);
 
-    for (let i = 0; i < children.length; i++) {
-      walk(children[i].id, childPrefix, i === children.length - 1, false);
+    // Collapse repeated siblings with the same display name
+    let i = 0;
+    while (i < children.length) {
+      // Find a run of siblings with the same displayName
+      let runEnd = i + 1;
+      while (runEnd < children.length && children[runEnd].displayName === children[i].displayName) {
+        runEnd++;
+      }
+      const runLen = runEnd - i;
+
+      if (runLen > COLLAPSE_THRESHOLD) {
+        // Show first COLLAPSE_THRESHOLD items, then a summary line
+        for (let j = 0; j < COLLAPSE_THRESHOLD; j++) {
+          const idx = i + j;
+          const isLastChild = runEnd === children.length && j === COLLAPSE_THRESHOLD; // never true; summary line comes after
+          if (!walk(children[idx].id, childPrefix, false, false)) return false;
+        }
+        // Summary line for the rest
+        const remaining = runLen - COLLAPSE_THRESHOLD;
+        const isLastGroup = runEnd === children.length;
+        const summaryConnector = isLastGroup ? ELBOW : TEE;
+        if (!addLine(`${childPrefix}${summaryConnector}... +${remaining} more ${children[i].displayName}`)) return false;
+        i = runEnd;
+      } else {
+        // Render normally
+        for (let j = i; j < runEnd; j++) {
+          const isLastChild = j === children.length - 1;
+          if (!walk(children[j].id, childPrefix, isLastChild, false)) return false;
+        }
+        i = runEnd;
+      }
     }
+    return true;
   }
 
   // Find root nodes
   const roots = childrenMap.get(null) || [];
   for (let i = 0; i < roots.length; i++) {
-    walk(roots[i].id, '', i === roots.length - 1, true);
+    if (!walk(roots[i].id, '', i === roots.length - 1, true)) break;
+  }
+
+  if (truncated) {
+    lines.push(`... output truncated at ${maxLines} lines`);
+  }
+
+  // Summary footer
+  if (totalCount !== undefined) {
+    const shown = nodes.length;
+    const totalFormatted = totalCount.toLocaleString();
+    if (shown < totalCount) {
+      lines.push(`${shown} components shown (${totalFormatted} total)`);
+    } else {
+      lines.push(`${totalFormatted} components`);
+    }
   }
 
   return lines.join('\n');
