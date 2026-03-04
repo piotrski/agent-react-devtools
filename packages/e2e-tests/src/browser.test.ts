@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { chromium, type Browser, type Page } from 'playwright';
 import path from 'node:path';
+import fs from 'node:fs';
 import type { ChildProcess } from 'node:child_process';
 import {
   createTempStateDir,
@@ -120,5 +121,48 @@ describe('Browser e2e', () => {
     expect(summary.name).toBe('browser-e2e');
     expect(summary.commitCount).toBeGreaterThan(0);
     expect(summary.componentRenderCounts.length).toBeGreaterThan(0);
+  });
+
+  it('HMR works — file change applies without full reload', async () => {
+    const appFile = path.resolve(
+      import.meta.dirname,
+      '../../../examples/vite-app/src/App.tsx',
+    );
+    const original = fs.readFileSync(appFile, 'utf-8');
+
+    try {
+      // Set a window marker to detect full page reloads
+      await page.evaluate(() => {
+        (window as any).__hmrMarker = 'alive';
+      });
+
+      // Verify the original heading is present
+      const h1 = page.locator('h1');
+      expect(await h1.textContent()).toBe('Perf Debug App');
+
+      // Modify the heading text
+      const modified = original.replace('Perf Debug App', 'HMR Test Heading');
+      fs.writeFileSync(appFile, modified, 'utf-8');
+
+      // Wait for HMR to apply the change
+      const deadline = Date.now() + 10_000;
+      let found = false;
+      while (Date.now() < deadline) {
+        const text = await h1.textContent().catch(() => null);
+        if (text === 'HMR Test Heading') {
+          found = true;
+          break;
+        }
+        await sleep(250);
+      }
+      expect(found, 'File change should be reflected in the browser').toBe(true);
+
+      // Verify no full page reload occurred — the marker should still be set
+      const marker = await page.evaluate(() => (window as any).__hmrMarker);
+      expect(marker).toBe('alive');
+    } finally {
+      // Always restore the original file
+      fs.writeFileSync(appFile, original, 'utf-8');
+    }
   });
 });
