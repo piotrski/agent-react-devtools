@@ -15,16 +15,13 @@ export function reactDevtools(options?: ReactDevtoolsOptions): Plugin {
     name: 'agent-react-devtools',
     apply: 'serve',
     config() {
-      // The connect module uses top-level await to block React from loading
-      // before the devtools hook is installed. Vite's dep optimizer uses
-      // esbuild which defaults to es2020 (no TLA support), so we enable it.
+      // The connect module is injected via transformIndexHtml, so Vite's
+      // dep scanner won't discover react-devtools-core (a CJS package)
+      // until the page loads. Without this hint, Vite triggers dep
+      // re-optimization at runtime which causes a full-reload and breaks HMR.
       return {
         optimizeDeps: {
-          esbuildOptions: {
-            supported: {
-              'top-level-await': true,
-            },
-          },
+          include: ['react-devtools-core'],
         },
       };
     },
