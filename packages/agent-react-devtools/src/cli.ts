@@ -10,6 +10,7 @@ import {
   formatComponent,
   formatSearchResults,
   formatCount,
+  formatErrors,
   formatStatus,
   formatProfileSummary,
   formatProfileReport,
@@ -39,6 +40,7 @@ Components:
   get component <@c1 | id>     Props, state, hooks
   find <name> [--exact]         Search by display name
   count                         Component count by type
+  errors                        Components with errors/warnings
 
 Wait:
   wait --connected [--timeout S]       Block until an app connects
@@ -253,6 +255,17 @@ async function main(): Promise<void> {
       const resp = await sendCommand({ type: 'count' });
       if (resp.ok) {
         console.log(formatCount(resp.data as any));
+      } else {
+        console.error(resp.error);
+        process.exit(1);
+      }
+      return;
+    }
+
+    if (cmd0 === 'errors') {
+      const resp = await sendCommand({ type: 'errors' });
+      if (resp.ok) {
+        console.log(formatErrors(resp.data as any));
       } else {
         console.error(resp.error);
         process.exit(1);

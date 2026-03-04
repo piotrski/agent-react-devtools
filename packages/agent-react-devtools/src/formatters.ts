@@ -27,13 +27,27 @@ function typeTag(type: string): string {
 
 /**
  * Format a consistent component reference: `@c1 [fn] Name` or `@c1 [fn] Name key=x`
+ * When errors/warnings are non-zero, appends annotations like `⚠2 ✗1`.
  */
-function formatRef(opts: { label?: string; type?: string; name: string; key?: string | null }): string {
+function formatRef(opts: { label?: string; type?: string; name: string; key?: string | null; errors?: number; warnings?: number }): string {
   const ref = opts.label || '?';
   const tag = typeTag(opts.type || 'other');
   let s = `${ref} [${tag}] ${opts.name}`;
   if (opts.key) s += ` key=${opts.key}`;
+  const annotations = formatErrorAnnotations(opts.errors, opts.warnings);
+  if (annotations) s += ` ${annotations}`;
   return s;
+}
+
+/**
+ * Format error/warning count annotations (e.g., `⚠2 ✗1`).
+ * Returns empty string if both counts are zero or undefined.
+ */
+function formatErrorAnnotations(errors?: number, warnings?: number): string {
+  const parts: string[] = [];
+  if (warnings && warnings > 0) parts.push(`⚠${warnings}`);
+  if (errors && errors > 0) parts.push(`✗${errors}`);
+  return parts.join(' ');
 }
 
 // ── Tree connector characters ──
@@ -66,7 +80,7 @@ export function formatTree(nodes: TreeNode[], hint?: string): string {
     if (!node) return;
 
     const connector = isRoot ? '' : isLast ? ELBOW : TEE;
-    const line = formatRef({ label: node.label, type: node.type, name: node.displayName, key: node.key });
+    const line = formatRef({ label: node.label, type: node.type, name: node.displayName, key: node.key, errors: node.errors, warnings: node.warnings });
 
     lines.push(`${prefix}${connector}${line}`);
 
@@ -87,10 +101,21 @@ export function formatTree(nodes: TreeNode[], hint?: string): string {
   return lines.join('\n');
 }
 
-export function formatComponent(element: InspectedElement, label?: string): string {
+export function formatErrors(nodes: TreeNode[]): string {
+  if (nodes.length === 0) return 'No components with errors or warnings';
+
+  const lines: string[] = [];
+  for (const n of nodes) {
+    const ref = formatRef({ label: n.label, type: n.type, name: n.displayName, key: n.key, errors: n.errors, warnings: n.warnings });
+    lines.push(ref);
+  }
+  return lines.join('\n');
+}
+
+export function formatComponent(element: InspectedElement & { errors?: number; warnings?: number }, label?: string): string {
   const lines: string[] = [];
 
-  lines.push(formatRef({ label: label || `#${element.id}`, type: element.type, name: element.displayName, key: element.key }));
+  lines.push(formatRef({ label: label || `#${element.id}`, type: element.type, name: element.displayName, key: element.key, errors: element.errors, warnings: element.warnings }));
 
   // Props
   if (element.props && Object.keys(element.props).length > 0) {
@@ -130,7 +155,7 @@ export function formatSearchResults(results: TreeNode[]): string {
   if (results.length === 0) return 'No components found';
 
   return results
-    .map((n) => formatRef({ label: n.label, type: n.type, name: n.displayName, key: n.key }))
+    .map((n) => formatRef({ label: n.label, type: n.type, name: n.displayName, key: n.key, errors: n.errors, warnings: n.warnings }))
     .join('\n');
 }
 
