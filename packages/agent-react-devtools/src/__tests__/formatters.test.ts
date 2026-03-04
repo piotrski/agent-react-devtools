@@ -12,9 +12,10 @@ import {
   formatRerenders,
   formatTimeline,
   formatCommitDetail,
+  formatChangedKeys,
 } from '../formatters.js';
 import type { TreeNode } from '../component-tree.js';
-import type { InspectedElement, StatusInfo, ComponentRenderReport, ConnectionHealth } from '../types.js';
+import type { InspectedElement, StatusInfo, ComponentRenderReport, ConnectionHealth, ChangedKeys } from '../types.js';
 import type { ProfileSummary, TimelineEntry, CommitDetail } from '../profiler.js';
 
 describe('formatTree', () => {
@@ -252,7 +253,7 @@ describe('formatProfileSummary', () => {
 });
 
 describe('formatProfileReport', () => {
-  it('should format a render report with type tag', () => {
+  it('should format a render report with changed keys', () => {
     const report: ComponentRenderReport = {
       id: 5,
       displayName: 'UserProfile',
@@ -263,6 +264,7 @@ describe('formatProfileReport', () => {
       avgDuration: 45,
       maxDuration: 120,
       causes: ['props-changed', 'state-changed'],
+      changedKeys: { props: ['userId', 'theme'], state: ['isEditing'], hooks: [] },
     };
 
     const result = formatProfileReport(report);
@@ -271,6 +273,23 @@ describe('formatProfileReport', () => {
     expect(result).toContain('avg:45.0ms');
     expect(result).toContain('max:120.0ms');
     expect(result).toContain('props-changed');
+    expect(result).toContain('changed: props: userId, theme  state: isEditing');
+  });
+
+  it('should omit changed line when keys are empty', () => {
+    const report: ComponentRenderReport = {
+      id: 5,
+      displayName: 'UserProfile',
+      renderCount: 1,
+      totalDuration: 10,
+      avgDuration: 10,
+      maxDuration: 10,
+      causes: ['first-mount'],
+      changedKeys: { props: [], state: [], hooks: [] },
+    };
+
+    const result = formatProfileReport(report, '@c5');
+    expect(result).not.toContain('changed:');
   });
 
   it('should prefer explicit label param over report.label', () => {
@@ -296,10 +315,10 @@ describe('formatSlowest', () => {
     expect(formatSlowest([])).toContain('No profiling data');
   });
 
-  it('should format slowest components with labels and all causes', () => {
+  it('should format slowest components with labels and changed keys', () => {
     const reports: ComponentRenderReport[] = [
-      { id: 1, displayName: 'SlowComp', label: '@c1', type: 'function', renderCount: 5, totalDuration: 250, avgDuration: 50, maxDuration: 100, causes: ['props-changed', 'state-changed'] },
-      { id: 2, displayName: 'FastComp', label: '@c2', type: 'memo', renderCount: 10, totalDuration: 100, avgDuration: 10, maxDuration: 20, causes: ['state-changed'] },
+      { id: 1, displayName: 'SlowComp', label: '@c1', type: 'function', renderCount: 5, totalDuration: 250, avgDuration: 50, maxDuration: 100, causes: ['props-changed', 'state-changed'], changedKeys: { props: ['data'], state: ['count'], hooks: [] } },
+      { id: 2, displayName: 'FastComp', label: '@c2', type: 'memo', renderCount: 10, totalDuration: 100, avgDuration: 10, maxDuration: 20, causes: ['state-changed'], changedKeys: { props: [], state: ['count'], hooks: [] } },
     ];
 
     const result = formatSlowest(reports);
@@ -307,20 +326,31 @@ describe('formatSlowest', () => {
     expect(result).toContain('@c1 [fn] SlowComp');
     expect(result).toContain('@c2 [memo] FastComp');
     expect(result).toContain('causes:props-changed, state-changed');
-    expect(result).toContain('causes:state-changed');
+    expect(result).toContain('changed: props: data  state: count');
+    expect(result).toContain('changed: state: count');
   });
 });
 
 describe('formatRerenders', () => {
-  it('should format rerender data with labels and all causes', () => {
+  it('should format rerender data with labels and changed keys', () => {
     const reports: ComponentRenderReport[] = [
-      { id: 1, displayName: 'Chatty', label: '@c1', type: 'function', renderCount: 50, totalDuration: 100, avgDuration: 2, maxDuration: 5, causes: ['parent-rendered', 'props-changed'] },
+      { id: 1, displayName: 'Chatty', label: '@c1', type: 'function', renderCount: 50, totalDuration: 100, avgDuration: 2, maxDuration: 5, causes: ['parent-rendered', 'props-changed'], changedKeys: { props: ['value'], state: [], hooks: [] } },
     ];
 
     const result = formatRerenders(reports);
     expect(result).toContain('50 renders');
     expect(result).toContain('@c1 [fn] Chatty');
     expect(result).toContain('causes:parent-rendered, props-changed');
+    expect(result).toContain('changed: props: value');
+  });
+
+  it('should omit changed line when keys are empty', () => {
+    const reports: ComponentRenderReport[] = [
+      { id: 1, displayName: 'Chatty', label: '@c1', type: 'function', renderCount: 50, totalDuration: 100, avgDuration: 2, maxDuration: 5, causes: ['parent-rendered'], changedKeys: { props: [], state: [], hooks: [] } },
+    ];
+
+    const result = formatRerenders(reports);
+    expect(result).not.toContain('changed:');
   });
 });
 
@@ -340,14 +370,14 @@ describe('formatTimeline', () => {
 });
 
 describe('formatCommitDetail', () => {
-  it('should format commit detail with labels and types', () => {
+  it('should format commit detail with labels, types, and changed keys', () => {
     const detail: CommitDetail = {
       index: 0,
       timestamp: 1000,
       duration: 15.5,
       components: [
-        { id: 1, displayName: 'App', label: '@c1', type: 'function', actualDuration: 15.5, selfDuration: 5.2, causes: ['state-changed'] },
-        { id: 2, displayName: 'Header', label: '@c2', type: 'memo', actualDuration: 10.3, selfDuration: 10.3, causes: ['props-changed', 'hooks-changed'] },
+        { id: 1, displayName: 'App', label: '@c1', type: 'function', actualDuration: 15.5, selfDuration: 5.2, causes: ['state-changed'], changedKeys: { props: [], state: ['count'], hooks: [] } },
+        { id: 2, displayName: 'Header', label: '@c2', type: 'memo', actualDuration: 10.3, selfDuration: 10.3, causes: ['props-changed', 'hooks-changed'], changedKeys: { props: ['onClick', 'className'], state: [], hooks: [0] } },
       ],
       totalComponents: 2,
     };
@@ -360,8 +390,10 @@ describe('formatCommitDetail', () => {
     expect(result).toContain('self:5.2ms');
     expect(result).toContain('total:15.5ms');
     expect(result).toContain('causes:state-changed');
+    expect(result).toContain('changed: state: count');
     expect(result).toContain('@c2 [memo] Header');
     expect(result).toContain('causes:props-changed, hooks-changed');
+    expect(result).toContain('changed: props: onClick, className  hooks: #0');
   });
 
   it('should show hidden count', () => {
@@ -370,12 +402,45 @@ describe('formatCommitDetail', () => {
       timestamp: 2000,
       duration: 10,
       components: [
-        { id: 1, displayName: 'App', label: '@c1', type: 'function', actualDuration: 10, selfDuration: 10, causes: [] },
+        { id: 1, displayName: 'App', label: '@c1', type: 'function', actualDuration: 10, selfDuration: 10, causes: [], changedKeys: { props: [], state: [], hooks: [] } },
       ],
       totalComponents: 5,
     };
 
     const result = formatCommitDetail(detail);
     expect(result).toContain('... 4 more');
+  });
+
+  it('should omit changed keys when empty', () => {
+    const detail: CommitDetail = {
+      index: 0,
+      timestamp: 1000,
+      duration: 5,
+      components: [
+        { id: 1, displayName: 'App', label: '@c1', type: 'function', actualDuration: 5, selfDuration: 5, causes: ['first-mount'], changedKeys: { props: [], state: [], hooks: [] } },
+      ],
+      totalComponents: 1,
+    };
+
+    const result = formatCommitDetail(detail);
+    expect(result).toContain('App');
+    expect(result).not.toContain('changed:');
+  });
+});
+
+describe('formatChangedKeys', () => {
+  it('should format all key categories', () => {
+    const keys: ChangedKeys = { props: ['onClick', 'className'], state: ['count'], hooks: [0, 3] };
+    expect(formatChangedKeys(keys)).toBe('props: onClick, className  state: count  hooks: #0, #3');
+  });
+
+  it('should return empty string when no keys', () => {
+    const keys: ChangedKeys = { props: [], state: [], hooks: [] };
+    expect(formatChangedKeys(keys)).toBe('');
+  });
+
+  it('should omit empty categories', () => {
+    const keys: ChangedKeys = { props: ['theme'], state: [], hooks: [] };
+    expect(formatChangedKeys(keys)).toBe('props: theme');
   });
 });

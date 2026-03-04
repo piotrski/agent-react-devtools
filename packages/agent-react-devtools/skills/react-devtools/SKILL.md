@@ -89,11 +89,13 @@ hooks:
 
 ```
 Slowest (by avg render time):
-  @c3 [fn] ExpensiveList  avg:12.3ms  max:18.1ms  renders:47  causes:props-changed
-  @c4 [fn] TodoItem  avg:2.1ms  max:5.0ms  renders:94  causes:parent-rendered, props-changed
+  @c3 [fn] ExpensiveList  avg:12.3ms  max:18.1ms  renders:47  causes:props-changed  changed: props: items, filter
+  @c4 [fn] TodoItem  avg:2.1ms  max:5.0ms  renders:94  causes:parent-rendered, props-changed  changed: props: onToggle
 ```
 
 Render causes: `props-changed`, `state-changed`, `hooks-changed`, `parent-rendered`, `force-update`, `first-mount`.
+
+When specific changed keys are available, a `changed:` suffix shows exactly which props, state keys, or hooks triggered the render (e.g. `changed: props: onClick, className  state: count  hooks: #0`).
 
 ## Common Patterns
 
