@@ -181,9 +181,14 @@ class Daemon {
           if (!element) {
             return { ok: false, error: `Component ${cmd.id} not found` };
           }
+          // Include error/warning counts when non-zero
+          const treeNode = this.tree.getNode(resolvedId);
+          const enriched: Record<string, unknown> = { ...element };
+          if (treeNode && treeNode.errors > 0) enriched.errors = treeNode.errors;
+          if (treeNode && treeNode.warnings > 0) enriched.warnings = treeNode.warnings;
           // Include the label if the request used one
           const label = typeof cmd.id === 'string' ? cmd.id : undefined;
-          return { ok: true, data: element, label };
+          return { ok: true, data: enriched, label };
         }
 
         case 'find':
@@ -196,6 +201,12 @@ class Daemon {
           return {
             ok: true,
             data: this.tree.getCountByType(),
+          };
+
+        case 'errors':
+          return {
+            ok: true,
+            data: this.tree.getComponentsWithErrorsOrWarnings(),
           };
 
         case 'profile-start':

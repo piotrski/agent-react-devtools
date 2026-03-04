@@ -88,6 +88,10 @@ export interface TreeNode {
   parentId: number | null;
   children: number[];
   depth: number;
+  /** Non-zero error count (omitted when 0) */
+  errors?: number;
+  /** Non-zero warning count (omitted when 0) */
+  warnings?: number;
 }
 
 export class ComponentTree {
@@ -149,6 +153,8 @@ export class ComponentTree {
               parentId: null,
               children: [],
               rendererId,
+              errors: 0,
+              warnings: 0,
             };
             this.nodes.set(id, node);
             added.push({ id, displayName: node.displayName });
@@ -177,6 +183,8 @@ export class ComponentTree {
               parentId: parentId === 0 ? null : parentId,
               children: [],
               rendererId,
+              errors: 0,
+              warnings: 0,
             };
 
             this.nodes.set(id, node);
@@ -240,7 +248,14 @@ export class ComponentTree {
         }
 
         case TREE_OPERATION_UPDATE_ERRORS_OR_WARNINGS: {
-          // id, numErrors, numWarnings
+          const id = operations[i + 1];
+          const numErrors = operations[i + 2];
+          const numWarnings = operations[i + 3];
+          const node = this.nodes.get(id);
+          if (node) {
+            node.errors = numErrors;
+            node.warnings = numWarnings;
+          }
           i += 4;
           break;
         }
@@ -374,7 +389,7 @@ export class ComponentTree {
       this.labelToId.set(label, node.id);
       this.idToLabel.set(node.id, label);
 
-      result.push({
+      const treeNode: TreeNode = {
         id: node.id,
         label,
         displayName: node.displayName,
@@ -383,7 +398,10 @@ export class ComponentTree {
         parentId: node.parentId,
         children: node.children,
         depth,
-      });
+      };
+      if (node.errors > 0) treeNode.errors = node.errors;
+      if (node.warnings > 0) treeNode.warnings = node.warnings;
+      result.push(treeNode);
 
       for (const childId of node.children) {
         walk(childId, depth + 1);
@@ -443,6 +461,19 @@ export class ComponentTree {
     return Array.from(this.nodes.keys());
   }
 
+  /**
+   * Return all nodes that have non-zero error or warning counts.
+   */
+  getComponentsWithErrorsOrWarnings(): TreeNode[] {
+    const results: TreeNode[] = [];
+    for (const node of this.nodes.values()) {
+      if (node.errors > 0 || node.warnings > 0) {
+        results.push(this.toTreeNode(node));
+      }
+    }
+    return results;
+  }
+
   getRootIds(): number[] {
     return [...this.roots];
   }
@@ -489,7 +520,7 @@ export class ComponentTree {
       current = parent;
     }
 
-    return {
+    const treeNode: TreeNode = {
       id: node.id,
       label: this.idToLabel.get(node.id) || `@c?`,
       displayName: node.displayName,
@@ -499,5 +530,8 @@ export class ComponentTree {
       children: node.children,
       depth,
     };
+    if (node.errors > 0) treeNode.errors = node.errors;
+    if (node.warnings > 0) treeNode.warnings = node.warnings;
+    return treeNode;
   }
 }
