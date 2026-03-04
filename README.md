@@ -52,9 +52,13 @@ agent-react-devtools get tree --depth 3
 ├─ @c5 [fn] TodoList
 │  ├─ @c6 [fn] TodoItem key=1
 │  ├─ @c7 [fn] TodoItem key=2
-│  └─ @c8 [fn] TodoItem key=3
+│  ├─ @c8 [fn] TodoItem key=3
+│  └─ ... +47 more TodoItem
 └─ @c9 [fn] Footer
+53 components shown (1,843 total)
 ```
+
+Host components (`<div>`, `<span>`, etc.) are filtered by default to keep output compact. Use `--all` to include them. Host components with keys or custom element names (e.g. `<my-widget>`) are always shown.
 
 Inspect a component's props, state, and hooks:
 
@@ -115,12 +119,17 @@ agent-react-devtools status                 # Connection status
 ### Components
 
 ```sh
-agent-react-devtools get tree [--depth N]          # Component hierarchy
+agent-react-devtools get tree [--depth N] [--all] [--max-lines N]  # Component hierarchy
 agent-react-devtools get component <@c1 | id>      # Props, state, hooks
 agent-react-devtools find <name> [--exact]          # Search by display name
 agent-react-devtools count                          # Component count by type
 agent-react-devtools errors                         # Components with errors/warnings
 ```
+
+Tree output flags:
+- `--depth N` — limit tree depth
+- `--all` — include host components (filtered by default)
+- `--max-lines N` — hard cap on output lines
 
 Components are labeled `@c1`, `@c2`, etc. You can use these labels or numeric IDs interchangeably.
 
