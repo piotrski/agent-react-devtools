@@ -36,7 +36,7 @@ Daemon:
   status                        Show daemon status
 
 Components:
-  get tree [--depth N] [--all] [--max-lines N]  Component hierarchy
+  get tree [@c1 | id] [--depth N] [--all] [--max-lines N]  Component hierarchy
   get component <@c1 | id>     Props, state, hooks
   find <name> [--exact]         Search by display name
   count                         Component count by type
@@ -205,7 +205,17 @@ async function main(): Promise<void> {
       const maxLines = parseNumericFlag(flags, 'max-lines');
       // Host components are filtered by default; --all includes them
       const noHost = flags['all'] !== true;
-      const ipcCmd: IpcCommand = { type: 'get-tree', depth, noHost, maxLines };
+      // Parse optional root: `get tree @c5` or `get tree 5`
+      const rawRoot = command[2];
+      let root: number | string | undefined;
+      if (rawRoot) {
+        root = rawRoot.startsWith('@') ? rawRoot : parseInt(rawRoot, 10);
+        if (typeof root === 'number' && isNaN(root)) {
+          console.error('Usage: devtools get tree [@c1 | id] [--depth N] [--all] [--max-lines N]');
+          process.exit(1);
+        }
+      }
+      const ipcCmd: IpcCommand = { type: 'get-tree', depth, noHost, maxLines, root };
       const resp = await sendCommand(ipcCmd);
       if (resp.ok) {
         const { nodes, totalCount, maxLines: ml } = resp.data as any;

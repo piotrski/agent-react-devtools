@@ -60,6 +60,19 @@ agent-react-devtools get tree --depth 3
 
 Host components (`<div>`, `<span>`, etc.) are filtered by default to keep output compact. Use `--all` to include them. Host components with keys or custom element names (e.g. `<my-widget>`) are always shown.
 
+View a subtree rooted at a specific component:
+
+```sh
+agent-react-devtools get tree @c5 --depth 2
+```
+
+```
+@c1 [fn] TodoList
+├─ @c2 [fn] TodoItem key=1
+├─ @c3 [fn] TodoItem key=2
+└─ @c4 [fn] TodoItem key=3
+```
+
 Inspect a component's props, state, and hooks:
 
 ```sh
@@ -119,7 +132,7 @@ agent-react-devtools status                 # Connection status
 ### Components
 
 ```sh
-agent-react-devtools get tree [--depth N] [--all] [--max-lines N]  # Component hierarchy
+agent-react-devtools get tree [@c1 | id] [--depth N] [--all] [--max-lines N]  # Component hierarchy (subtree)
 agent-react-devtools get component <@c1 | id>      # Props, state, hooks
 agent-react-devtools find <name> [--exact]          # Search by display name
 agent-react-devtools count                          # Component count by type
@@ -285,6 +298,7 @@ This project uses agent-react-devtools to inspect the running React app.
 - `agent-react-devtools start` — start the daemon
 - `agent-react-devtools status` — check if the app is connected
 - `agent-react-devtools get tree` — see the component hierarchy
+- `agent-react-devtools get tree @c5` — see subtree from a specific component
 - `agent-react-devtools get component @c1` — inspect a specific component
 - `agent-react-devtools find <Name>` — search for components
 - `agent-react-devtools errors` — list components with errors or warnings

@@ -98,6 +98,8 @@ export interface GetTreeOptions {
   maxDepth?: number;
   /** When true, filter out host components (unless they have a key or custom element name) */
   noHost?: boolean;
+  /** When set, only return the subtree rooted at this component ID */
+  rootId?: number;
 }
 
 /**
@@ -393,7 +395,7 @@ export class ComponentTree {
       typeof maxDepthOrOpts === 'number'
         ? { maxDepth: maxDepthOrOpts }
         : maxDepthOrOpts || {};
-    const { maxDepth, noHost } = opts;
+    const { maxDepth, noHost, rootId } = opts;
 
     const result: TreeNode[] = [];
 
@@ -422,7 +424,7 @@ export class ComponentTree {
           displayName: node.displayName,
           type: node.type,
           key: node.key,
-          parentId: effectiveParentId,
+          parentId: rootId !== undefined && depth === 0 ? null : effectiveParentId,
           children: node.children,
           depth,
         };
@@ -446,8 +448,15 @@ export class ComponentTree {
       }
     };
 
-    for (const rootId of this.roots) {
-      walk(rootId, 0, null);
+    if (rootId !== undefined) {
+      const rootNode = this.nodes.get(rootId);
+      if (rootNode) {
+        walk(rootId, 0, null);
+      }
+    } else {
+      for (const rid of this.roots) {
+        walk(rid, 0, null);
+      }
     }
     return result;
   }

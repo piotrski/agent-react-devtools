@@ -194,6 +194,78 @@ describe('ComponentTree', () => {
     expect(shallow.map((n) => n.displayName)).toEqual(['App', 'Level1']);
   });
 
+  describe('subtree extraction (rootId)', () => {
+    it('should get subtree from a specific root', () => {
+      const ops = buildOps(1, 100, ['App', 'Header', 'Nav', 'Logo', 'Footer'], (s) => [
+        ...addOp(1, 5, 0, s('App')),
+        ...addOp(2, 5, 1, s('Header')),
+        ...addOp(3, 5, 2, s('Nav')),
+        ...addOp(4, 5, 2, s('Logo')),
+        ...addOp(5, 5, 1, s('Footer')),
+      ]);
+      tree.applyOperations(ops);
+
+      const subtree = tree.getTree({ rootId: 2 });
+      expect(subtree).toHaveLength(3);
+      expect(subtree.map((n) => n.displayName)).toEqual(['Header', 'Nav', 'Logo']);
+      expect(subtree[0].depth).toBe(0);
+      expect(subtree[0].parentId).toBeNull();
+      expect(subtree[1].depth).toBe(1);
+      expect(subtree[2].depth).toBe(1);
+    });
+
+    it('should get subtree with depth limit', () => {
+      const ops = buildOps(1, 100, ['App', 'Header', 'Nav', 'Link', 'Footer'], (s) => [
+        ...addOp(1, 5, 0, s('App')),
+        ...addOp(2, 5, 1, s('Header')),
+        ...addOp(3, 5, 2, s('Nav')),
+        ...addOp(4, 5, 3, s('Link')),
+        ...addOp(5, 5, 1, s('Footer')),
+      ]);
+      tree.applyOperations(ops);
+
+      const subtree = tree.getTree({ rootId: 2, maxDepth: 1 });
+      expect(subtree).toHaveLength(2);
+      expect(subtree.map((n) => n.displayName)).toEqual(['Header', 'Nav']);
+    });
+
+    it('should return empty array for non-existent subtree root', () => {
+      const ops = buildOps(1, 100, ['App'], (s) => [
+        ...addOp(1, 5, 0, s('App')),
+      ]);
+      tree.applyOperations(ops);
+
+      const subtree = tree.getTree({ rootId: 999 });
+      expect(subtree).toHaveLength(0);
+    });
+
+    it('should assign labels starting from @c1 in subtree', () => {
+      const ops = buildOps(1, 100, ['App', 'Header', 'Nav'], (s) => [
+        ...addOp(1, 5, 0, s('App')),
+        ...addOp(2, 5, 1, s('Header')),
+        ...addOp(3, 5, 2, s('Nav')),
+      ]);
+      tree.applyOperations(ops);
+
+      const subtree = tree.getTree({ rootId: 2 });
+      expect(subtree[0].label).toBe('@c1');
+      expect(subtree[1].label).toBe('@c2');
+    });
+
+    it('should combine rootId with noHost', () => {
+      const ops = buildOps(1, 100, ['App', 'Header', 'div', 'Nav'], (s) => [
+        ...addOp(1, 5, 0, s('App')),
+        ...addOp(2, 5, 1, s('Header')),
+        ...addOp(3, 7, 2, s('div')),
+        ...addOp(4, 5, 3, s('Nav')),
+      ]);
+      tree.applyOperations(ops);
+
+      const subtree = tree.getTree({ rootId: 2, noHost: true });
+      expect(subtree.map((n) => n.displayName)).toEqual(['Header', 'Nav']);
+    });
+  });
+
   it('should handle empty operations', () => {
     tree.applyOperations([]);
     expect(tree.getComponentCount()).toBe(0);

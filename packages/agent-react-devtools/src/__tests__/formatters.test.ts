@@ -45,6 +45,21 @@ describe('formatTree', () => {
     expect(result).toContain('└─');
   });
 
+  it('should format a subtree (root has null parentId)', () => {
+    const nodes: TreeNode[] = [
+      { id: 5, label: '@c1', displayName: 'Header', type: 'function', key: null, parentId: null, children: [6, 7], depth: 0 },
+      { id: 6, label: '@c2', displayName: 'Nav', type: 'function', key: null, parentId: 5, children: [], depth: 1 },
+      { id: 7, label: '@c3', displayName: 'Logo', type: 'memo', key: null, parentId: 5, children: [], depth: 1 },
+    ];
+
+    const result = formatTree(nodes);
+    expect(result).toContain('@c1 [fn] Header');
+    expect(result).toContain('@c2 [fn] Nav');
+    expect(result).toContain('@c3 [memo] Logo');
+    expect(result).toContain('├─');
+    expect(result).toContain('└─');
+  });
+
   it('should show keys', () => {
     const nodes: TreeNode[] = [
       { id: 1, label: '@c1', displayName: 'List', type: 'function', key: null, parentId: null, children: [2], depth: 0 },
