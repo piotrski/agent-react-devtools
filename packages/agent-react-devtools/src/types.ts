@@ -176,7 +176,7 @@ export interface ConnectionHealth {
 export type IpcCommand =
   | { type: 'ping' }
   | { type: 'status' }
-  | { type: 'get-tree'; depth?: number; noHost?: boolean; maxLines?: number }
+  | { type: 'get-tree'; depth?: number; noHost?: boolean; maxLines?: number; root?: number | string }
   | { type: 'get-component'; id: number | string }
   | { type: 'find'; name: string; exact?: boolean }
   | { type: 'count' }

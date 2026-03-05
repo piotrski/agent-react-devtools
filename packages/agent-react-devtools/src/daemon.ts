@@ -160,10 +160,18 @@ class Daemon {
           };
 
         case 'get-tree': {
+          let resolvedRoot: number | undefined;
+          if (cmd.root !== undefined) {
+            resolvedRoot = this.tree.resolveId(cmd.root);
+            if (resolvedRoot === undefined) {
+              return { ok: false, error: `Component ${cmd.root} not found` };
+            }
+          }
           const totalCount = this.tree.getComponentCount();
           const treeData = this.tree.getTree({
             maxDepth: cmd.depth,
             noHost: cmd.noHost,
+            rootId: resolvedRoot,
           });
           const response: IpcResponse = {
             ok: true,
