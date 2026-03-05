@@ -204,6 +204,7 @@ class Daemon {
           };
 
         case 'errors':
+          this.tree.getTree();
           return {
             ok: true,
             data: this.tree.getComponentsWithErrorsOrWarnings(),
