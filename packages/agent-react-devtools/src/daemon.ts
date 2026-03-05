@@ -175,7 +175,7 @@ class Daemon {
           });
           const response: IpcResponse = {
             ok: true,
-            data: { nodes: treeData, totalCount, maxLines: cmd.maxLines },
+            data: { nodes: treeData, totalCount },
           };
           if (treeData.length === 0) {
             const health = this.bridge.getConnectionHealth();
