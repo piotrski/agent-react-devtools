@@ -218,8 +218,8 @@ async function main(): Promise<void> {
       const ipcCmd: IpcCommand = { type: 'get-tree', depth, noHost, maxLines, root };
       const resp = await sendCommand(ipcCmd);
       if (resp.ok) {
-        const { nodes, totalCount, maxLines: ml } = resp.data as any;
-        console.log(formatTree(nodes, { hint: resp.hint, totalCount, maxLines: ml }));
+        const { nodes, totalCount } = resp.data as any;
+        console.log(formatTree(nodes, { hint: resp.hint, totalCount, maxLines }));
       } else {
         console.error(resp.error);
         process.exit(1);
