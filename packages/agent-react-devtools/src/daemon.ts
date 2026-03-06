@@ -255,6 +255,14 @@ class Daemon {
           return { ok: true, data: detail };
         }
 
+        case 'profile-export': {
+          const exportData = this.profiler.getExportData(this.tree);
+          if (!exportData) {
+            return { ok: false, error: 'No profiling data to export (run profile start/stop first)' };
+          }
+          return { ok: true, data: exportData };
+        }
+
         case 'wait':
           return this.handleWait(cmd, conn);
 

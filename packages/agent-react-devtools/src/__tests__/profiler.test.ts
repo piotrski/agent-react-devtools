@@ -299,4 +299,175 @@ describe('Profiler', () => {
     expect(timeline[1].duration).toBe(20);
     expect(timeline[1].componentCount).toBe(2);
   });
+
+  describe('getExportData', () => {
+    it('returns null when no session exists', () => {
+      expect(profiler.getExportData(tree)).toBeNull();
+    });
+
+    it('returns null when session has no commits', () => {
+      profiler.start('test');
+      profiler.stop();
+      expect(profiler.getExportData(tree)).toBeNull();
+    });
+
+    it('exports version 5 format', () => {
+      profiler.start('test');
+      profiler.processProfilingData({
+        commitData: [
+          {
+            timestamp: 1000,
+            duration: 15,
+            fiberActualDurations: [1, 10, 2, 3, 3, 2],
+            fiberSelfDurations: [1, 5, 2, 3, 3, 2],
+          },
+        ],
+      });
+      profiler.stop(tree);
+
+      const exported = profiler.getExportData(tree);
+      expect(exported).not.toBeNull();
+      expect(exported!.version).toBe(5);
+      expect(exported!.dataForRoots).toHaveLength(1);
+    });
+
+    it('maps commits to CommitDataExport format', () => {
+      profiler.start('test');
+      profiler.processProfilingData({
+        commitData: [
+          {
+            timestamp: 1000,
+            duration: 15,
+            fiberActualDurations: [1, 10, 2, 3],
+            fiberSelfDurations: [1, 5, 2, 3],
+            changeDescriptions: [
+              [1, { props: ['theme'], isFirstMount: false }],
+              [2, { isFirstMount: true }],
+            ],
+          },
+        ],
+      });
+      profiler.stop(tree);
+
+      const root = profiler.getExportData(tree)!.dataForRoots[0];
+      expect(root.commitData).toHaveLength(1);
+
+      const commit = root.commitData[0];
+      expect(commit.timestamp).toBe(1000);
+      expect(commit.duration).toBe(15);
+      expect(commit.fiberActualDurations).toEqual(expect.arrayContaining([[1, 10], [2, 3]]));
+      expect(commit.fiberSelfDurations).toEqual(expect.arrayContaining([[1, 5], [2, 3]]));
+      expect(commit.effectDuration).toBeNull();
+      expect(commit.passiveEffectDuration).toBeNull();
+      expect(commit.priorityLevel).toBeNull();
+      expect(commit.updaters).toBeNull();
+    });
+
+    it('exports change descriptions with context:null field', () => {
+      profiler.start('test');
+      profiler.processProfilingData({
+        commitData: [
+          {
+            timestamp: 1000,
+            duration: 5,
+            fiberActualDurations: [1, 5],
+            fiberSelfDurations: [1, 5],
+            changeDescriptions: [
+              [1, { props: ['onClick'], state: ['count'], isFirstMount: false, didHooksChange: true }],
+            ],
+          },
+        ],
+      });
+      profiler.stop(tree);
+
+      const commit = profiler.getExportData(tree)!.dataForRoots[0].commitData[0];
+      expect(commit.changeDescriptions).toHaveLength(1);
+      const [id, desc] = commit.changeDescriptions![0];
+      expect(id).toBe(1);
+      expect(desc.context).toBeNull();
+      expect(desc.props).toEqual(['onClick']);
+      expect(desc.state).toEqual(['count']);
+      expect(desc.didHooksChange).toBe(true);
+      expect(desc.isFirstMount).toBe(false);
+    });
+
+    it('builds snapshots from component tree', () => {
+      profiler.start('test');
+      profiler.processProfilingData({
+        commitData: [
+          {
+            timestamp: 1000,
+            duration: 5,
+            fiberActualDurations: [1, 5],
+            fiberSelfDurations: [1, 5],
+          },
+        ],
+      });
+      profiler.stop(tree);
+
+      const root = profiler.getExportData(tree)!.dataForRoots[0];
+      // Should have snapshots for all nodes in the tree
+      expect(root.snapshots.length).toBeGreaterThanOrEqual(3); // App, Header, Content
+
+      // Find the App snapshot
+      const appSnapshot = root.snapshots.find(([id]) => id === 1);
+      expect(appSnapshot).toBeDefined();
+      const [, appNode] = appSnapshot!;
+      expect(appNode.displayName).toBe('App');
+      expect(appNode.type).toBe(5); // ElementType for function
+      expect(appNode.children).toEqual(expect.arrayContaining([2, 3]));
+      expect(appNode.compiledWithForget).toBe(false);
+      expect(appNode.hocDisplayNames).toBeNull();
+    });
+
+    it('populates initialTreeBaseDurations from first commit', () => {
+      profiler.start('test');
+      profiler.processProfilingData({
+        commitData: [
+          {
+            timestamp: 1000,
+            duration: 15,
+            fiberActualDurations: [1, 10, 2, 3],
+            fiberSelfDurations: [1, 5, 2, 3],
+          },
+          {
+            timestamp: 2000,
+            duration: 8,
+            fiberActualDurations: [1, 6],
+            fiberSelfDurations: [1, 4],
+          },
+        ],
+      });
+      profiler.stop(tree);
+
+      const root = profiler.getExportData(tree)!.dataForRoots[0];
+      // Should use first commit's self durations
+      expect(root.initialTreeBaseDurations).toEqual(expect.arrayContaining([[1, 5], [2, 3]]));
+    });
+
+    it('produces JSON that can be serialized and parsed', () => {
+      profiler.start('test');
+      profiler.processProfilingData({
+        commitData: [
+          {
+            timestamp: 1000,
+            duration: 15,
+            fiberActualDurations: [1, 10, 2, 3, 3, 2],
+            fiberSelfDurations: [1, 5, 2, 3, 3, 2],
+            changeDescriptions: [
+              [1, { props: ['x'], isFirstMount: false }],
+            ],
+          },
+        ],
+      });
+      profiler.stop(tree);
+
+      const exported = profiler.getExportData(tree)!;
+      const json = JSON.stringify(exported);
+      const parsed = JSON.parse(json);
+      expect(parsed.version).toBe(5);
+      expect(parsed.dataForRoots).toHaveLength(1);
+      expect(parsed.dataForRoots[0].commitData).toHaveLength(1);
+    });
+  });
 });

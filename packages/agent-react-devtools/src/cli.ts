@@ -18,6 +18,8 @@ import {
   formatTimeline,
   formatCommitDetail,
 } from './formatters.js';
+import { writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import type { IpcCommand } from './types.js';
 
 function usage(): string {
@@ -48,7 +50,8 @@ Profiling:
   profile slow [--limit N]      Slowest components (by avg)
   profile rerenders [--limit N] Most re-rendered components
   profile timeline [--limit N]  Commit timeline
-  profile commit <N | #N> [--limit N]  Detail for specific commit`;
+  profile commit <N | #N> [--limit N]  Detail for specific commit
+  profile export <file>               Export as React DevTools JSON`;
 }
 
 function parseArgs(argv: string[]): {
@@ -357,6 +360,24 @@ async function main(): Promise<void> {
       const resp = await sendCommand({ type: 'profile-timeline', limit });
       if (resp.ok) {
         console.log(formatTimeline(resp.data as any));
+      } else {
+        console.error(resp.error);
+        process.exit(1);
+      }
+      return;
+    }
+
+    if (cmd0 === 'profile' && cmd1 === 'export') {
+      const file = command[2];
+      if (!file) {
+        console.error('Usage: devtools profile export <file>');
+        process.exit(1);
+      }
+      const resp = await sendCommand({ type: 'profile-export' });
+      if (resp.ok) {
+        const outPath = resolve(file);
+        writeFileSync(outPath, JSON.stringify(resp.data), 'utf-8');
+        console.log(`Exported to ${outPath}`);
       } else {
         console.error(resp.error);
         process.exit(1);

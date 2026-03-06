@@ -5,6 +5,11 @@ import type {
   ComponentRenderReport,
   RenderCause,
   ChangedKeys,
+  ComponentType,
+  ProfilingDataExport,
+  ProfilingDataForRootExport,
+  CommitDataExport,
+  SnapshotNodeExport,
 } from './types.js';
 import type { ComponentTree } from './component-tree.js';
 
@@ -317,6 +322,106 @@ export class Profiler {
     return entries;
   }
 
+  /**
+   * Export profiling data in React DevTools Profiler format (version 5).
+   * The output can be imported into React DevTools via the Profiler tab.
+   */
+  getExportData(tree: ComponentTree): ProfilingDataExport | null {
+    if (!this.session || this.session.commits.length === 0) return null;
+
+    // Group commits by root ID (most apps have one root)
+    const rootIds = tree.getRootIds();
+    if (rootIds.length === 0) {
+      // Fallback: use a synthetic root
+      rootIds.push(1);
+    }
+
+    const dataForRoots: ProfilingDataForRootExport[] = [];
+
+    for (const rootId of rootIds) {
+      const rootNode = tree.getNode(rootId);
+
+      // Build snapshots from current tree
+      const snapshots: Array<[number, SnapshotNodeExport]> = [];
+      const allNodeIds = tree.getAllNodeIds();
+      for (const nodeId of allNodeIds) {
+        const node = tree.getNode(nodeId);
+        if (!node) continue;
+        snapshots.push([nodeId, {
+          id: nodeId,
+          children: node.children,
+          displayName: node.displayName || null,
+          hocDisplayNames: null,
+          key: node.key,
+          type: componentTypeToElementType(node.type),
+          compiledWithForget: false,
+        }]);
+      }
+
+      // Build initial tree base durations from first commit
+      const initialTreeBaseDurations: Array<[number, number]> = [];
+      if (this.session.commits.length > 0) {
+        const firstCommit = this.session.commits[0];
+        for (const [id, duration] of firstCommit.fiberSelfDurations) {
+          initialTreeBaseDurations.push([id, duration]);
+        }
+      }
+
+      // Convert commits
+      const commitData: CommitDataExport[] = this.session.commits.map(
+        (commit) => this.convertCommit(commit),
+      );
+
+      dataForRoots.push({
+        commitData,
+        displayName: rootNode?.displayName || 'Root',
+        initialTreeBaseDurations,
+        operations: this.session.commits.map(() => []),
+        rootID: rootId,
+        snapshots,
+      });
+    }
+
+    return {
+      version: 5,
+      dataForRoots,
+    };
+  }
+
+  private convertCommit(commit: ProfilingCommit): CommitDataExport {
+    const changeDescriptions: Array<[number, {
+      context: null;
+      didHooksChange: boolean;
+      isFirstMount: boolean;
+      props: string[] | null;
+      state: string[] | null;
+      hooks: number[] | null;
+    }]> = [];
+
+    for (const [id, desc] of commit.changeDescriptions) {
+      changeDescriptions.push([id, {
+        context: null,
+        didHooksChange: desc.didHooksChange,
+        isFirstMount: desc.isFirstMount,
+        props: desc.props,
+        state: desc.state,
+        hooks: desc.hooks,
+      }]);
+    }
+
+    return {
+      changeDescriptions: changeDescriptions.length > 0 ? changeDescriptions : null,
+      duration: commit.duration,
+      effectDuration: null,
+      fiberActualDurations: Array.from(commit.fiberActualDurations.entries()),
+      fiberSelfDurations: Array.from(commit.fiberSelfDurations.entries()),
+      passiveEffectDuration: null,
+      priorityLevel: null,
+      timestamp: commit.timestamp,
+      updaters: null,
+    };
+  }
+
   private getAllReports(tree: ComponentTree): ComponentRenderReport[] {
     if (!this.session) return [];
 
@@ -334,6 +439,21 @@ export class Profiler {
       if (report) reports.push(report);
     }
     return reports;
+  }
+}
+
+function componentTypeToElementType(type: ComponentType): number {
+  switch (type) {
+    case 'class': return 1;
+    case 'context': return 2;
+    case 'function': return 5;
+    case 'forwardRef': return 6;
+    case 'host': return 7;
+    case 'memo': return 8;
+    case 'profiler': return 10;
+    case 'suspense': return 12;
+    case 'other': return 9;
+    default: return 9;
   }
 }
 
