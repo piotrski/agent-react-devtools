@@ -6,6 +6,7 @@ import type {
 } from './types.js';
 import type { TreeNode } from './component-tree.js';
 import type { ProfileSummary, TimelineEntry, CommitDetail } from './profiler.js';
+import type { ProfileDiffResult, DiffEntry } from './profile-diff.js';
 
 // ── Abbreviations for component types ──
 const TYPE_ABBREV: Record<string, string> = {
@@ -297,4 +298,84 @@ function formatCompactValue(val: unknown): string | undefined {
 function replacer(_key: string, value: unknown): unknown {
   if (typeof value === 'function') return 'ƒ';
   return value;
+}
+
+// ── Profile Diff ──
+
+function fmtMs(ms: number): string {
+  return ms.toFixed(1) + 'ms';
+}
+
+function fmtPct(pct: number | null): string {
+  if (pct === null) return '';
+  const sign = pct > 0 ? '+' : '';
+  return `${sign}${pct.toFixed(0)}%`;
+}
+
+function fmtDiffLine(e: DiffEntry): string {
+  const before = e.before ? fmtMs(e.before.avgDuration) : '-';
+  const after = e.after ? fmtMs(e.after.avgDuration) : '-';
+  const pct = fmtPct(e.avgDurationDeltaPct);
+  const rendersBefore = e.before ? String(e.before.renderCount) : '-';
+  const rendersAfter = e.after ? String(e.after.renderCount) : '-';
+  return `  ${e.displayName.padEnd(30)} avg: ${before.padStart(8)} -> ${after.padStart(8)}  ${pct.padStart(6)}  renders: ${rendersBefore} -> ${rendersAfter}`;
+}
+
+export function formatProfileDiff(diff: ProfileDiffResult, limit?: number): string {
+  const lines: string[] = [];
+  const s = diff.summary;
+
+  lines.push(`Before: ${s.totalCommitsBefore} commits, ${fmtMs(s.totalDurationBefore)} total`);
+  lines.push(`After:  ${s.totalCommitsAfter} commits, ${fmtMs(s.totalDurationAfter)} total`);
+
+  const durDelta = s.totalDurationAfter - s.totalDurationBefore;
+  const durPct = s.totalDurationBefore > 0 ? (durDelta / s.totalDurationBefore) * 100 : 0;
+  lines.push(`Delta:  ${fmtMs(durDelta)} (${fmtPct(durPct)})`);
+
+  if (diff.regressed.length > 0) {
+    lines.push('');
+    lines.push(`Regressed (${diff.regressed.length}):`);
+    for (const e of diff.regressed.slice(0, limit)) {
+      lines.push(fmtDiffLine(e));
+    }
+    const hidden = diff.regressed.length - (limit ?? diff.regressed.length);
+    if (hidden > 0) lines.push(`  ... ${hidden} more`);
+  }
+
+  if (diff.improved.length > 0) {
+    lines.push('');
+    lines.push(`Improved (${diff.improved.length}):`);
+    for (const e of diff.improved.slice(0, limit)) {
+      lines.push(fmtDiffLine(e));
+    }
+    const hidden = diff.improved.length - (limit ?? diff.improved.length);
+    if (hidden > 0) lines.push(`  ... ${hidden} more`);
+  }
+
+  if (diff.added.length > 0) {
+    lines.push('');
+    lines.push(`New (${diff.added.length}):`);
+    for (const e of diff.added.slice(0, limit)) {
+      lines.push(fmtDiffLine(e));
+    }
+    const hidden = diff.added.length - (limit ?? diff.added.length);
+    if (hidden > 0) lines.push(`  ... ${hidden} more`);
+  }
+
+  if (diff.removed.length > 0) {
+    lines.push('');
+    lines.push(`Removed (${diff.removed.length}):`);
+    for (const e of diff.removed.slice(0, limit)) {
+      lines.push(fmtDiffLine(e));
+    }
+    const hidden = diff.removed.length - (limit ?? diff.removed.length);
+    if (hidden > 0) lines.push(`  ... ${hidden} more`);
+  }
+
+  if (diff.regressed.length === 0 && diff.improved.length === 0 && diff.added.length === 0 && diff.removed.length === 0) {
+    lines.push('');
+    lines.push('No significant changes (all within 5% threshold)');
+  }
+
+  return lines.join('\n');
 }

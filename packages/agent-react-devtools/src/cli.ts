@@ -17,6 +17,7 @@ import {
   formatRerenders,
   formatTimeline,
   formatCommitDetail,
+  formatProfileDiff,
 } from './formatters.js';
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -51,7 +52,8 @@ Profiling:
   profile rerenders [--limit N] Most re-rendered components
   profile timeline [--limit N]  Commit timeline
   profile commit <N | #N> [--limit N]  Detail for specific commit
-  profile export <file>               Export as React DevTools JSON`;
+  profile export <file>               Export as React DevTools JSON
+  profile diff <a.json> <b.json> [--limit N]  Compare two exports`;
 }
 
 function parseArgs(argv: string[]): {
@@ -121,6 +123,23 @@ async function main(): Promise<void> {
     if (cmd0 === 'init') {
       const { runInit } = await import('./init.js');
       await runInit(process.cwd(), flags['dry-run'] === true);
+      return;
+    }
+
+    // ── Profile diff (no daemon needed) ──
+    if (cmd0 === 'profile' && cmd1 === 'diff') {
+      const fileA = command[2];
+      const fileB = command[3];
+      if (!fileA || !fileB) {
+        console.error('Usage: devtools profile diff <before.json> <after.json> [--limit N]');
+        process.exit(1);
+      }
+      const { loadExportFile, diffProfiles } = await import('./profile-diff.js');
+      const before = loadExportFile(resolve(fileA));
+      const after = loadExportFile(resolve(fileB));
+      const diff = diffProfiles(before, after);
+      const limit = parseNumericFlag(flags, 'limit');
+      console.log(formatProfileDiff(diff, limit));
       return;
     }
 
