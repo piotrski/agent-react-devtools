@@ -376,7 +376,7 @@ async function main(): Promise<void> {
       const resp = await sendCommand({ type: 'profile-export' });
       if (resp.ok) {
         const outPath = resolve(file);
-        writeFileSync(outPath, JSON.stringify(resp.data), 'utf-8');
+        writeFileSync(outPath, JSON.stringify(resp.data, null, 2), 'utf-8');
         console.log(`Exported to ${outPath}`);
       } else {
         console.error(resp.error);
