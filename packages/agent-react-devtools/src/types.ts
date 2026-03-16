@@ -134,7 +134,7 @@ export interface SnapshotNodeExport {
   children: number[];
   displayName: string | null;
   hocDisplayNames: string[] | null;
-  key: number | string | null;
+  key: string | null;
   type: number;
   compiledWithForget: boolean;
 }
