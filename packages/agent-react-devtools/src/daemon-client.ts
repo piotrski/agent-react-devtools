@@ -51,7 +51,7 @@ export async function ensureDaemon(port?: number): Promise<void> {
     );
     try {
       const stat = fs.statSync(daemonScript);
-      if (stat.mtimeMs > info.startedAt) {
+      if (stat.mtimeMs > info.startedAt + 5000) {
         stopDaemon();
       } else {
         return;
