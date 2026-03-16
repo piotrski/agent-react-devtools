@@ -45,7 +45,20 @@ function isDaemonAlive(info: DaemonInfo): boolean {
 export async function ensureDaemon(port?: number): Promise<void> {
   const info = readDaemonInfo();
   if (info && isDaemonAlive(info)) {
-    return; // Already running
+    const daemonScript = path.join(
+      path.dirname(new URL(import.meta.url).pathname),
+      'daemon.js',
+    );
+    try {
+      const stat = fs.statSync(daemonScript);
+      if (stat.mtimeMs > info.startedAt) {
+        stopDaemon();
+      } else {
+        return;
+      }
+    } catch {
+      return;
+    }
   }
 
   // Clean up stale files
