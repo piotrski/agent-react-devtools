@@ -330,10 +330,10 @@ export class Profiler {
     if (!this.session || this.session.commits.length === 0) return null;
 
     // Group commits by root ID (most apps have one root)
-    const rootIds = tree.getRootIds();
+    let rootIds = tree.getRootIds();
     if (rootIds.length === 0) {
       // Fallback: use a synthetic root
-      rootIds.push(1);
+      rootIds = [1];
     }
 
     const dataForRoots: ProfilingDataForRootExport[] = [];
@@ -341,31 +341,46 @@ export class Profiler {
     for (const rootId of rootIds) {
       const rootNode = tree.getNode(rootId);
 
-      // Build snapshots from current tree
+      // Collect node IDs belonging to this root's subtree
+      const subtreeIds = collectSubtreeIds(rootId, tree);
+
+      // Build snapshots from this root's subtree only
       const snapshots: Array<[number, SnapshotNodeExport]> = [];
-      const allNodeIds = tree.getAllNodeIds();
-      for (const nodeId of allNodeIds) {
+      for (const nodeId of subtreeIds) {
         const node = tree.getNode(nodeId);
         if (!node) continue;
+        // Real ROOT nodes have type 'other' (mapped from ELEMENT_TYPE_ROOT=11).
+        // Restore the original element type 11 for export so DevTools recognises them.
+        const elementType =
+          nodeId === rootId && node.type === 'other'
+            ? 11
+            : componentTypeToElementType(node.type);
         snapshots.push([nodeId, {
           id: nodeId,
           children: node.children,
           displayName: node.displayName || null,
           hocDisplayNames: null,
           key: node.key,
-          type: componentTypeToElementType(node.type),
+          type: elementType,
           compiledWithForget: false,
         }]);
       }
 
-      // Build initial tree base durations from first commit
-      const initialTreeBaseDurations: Array<[number, number]> = [];
-      if (this.session.commits.length > 0) {
-        const firstCommit = this.session.commits[0];
-        for (const [id, duration] of firstCommit.fiberSelfDurations) {
-          initialTreeBaseDurations.push([id, duration]);
+      // Build initial tree base durations for ALL nodes in the subtree.
+      // Use the latest self duration seen across all commits (components that
+      // never rendered during profiling default to 0).
+      const baseDurationMap = new Map<number, number>();
+      for (const nodeId of subtreeIds) {
+        baseDurationMap.set(nodeId, 0);
+      }
+      for (const commit of this.session.commits) {
+        for (const [id, duration] of commit.fiberSelfDurations) {
+          if (baseDurationMap.has(id)) {
+            baseDurationMap.set(id, duration);
+          }
         }
       }
+      const initialTreeBaseDurations = Array.from(baseDurationMap.entries());
 
       // Convert commits
       const commitData: CommitDataExport[] = this.session.commits.map(
@@ -440,6 +455,21 @@ export class Profiler {
     }
     return reports;
   }
+}
+
+/** Collect all node IDs in a root's subtree (including the root itself). */
+function collectSubtreeIds(rootId: number, tree: ComponentTree): number[] {
+  const ids: number[] = [];
+  const visit = (id: number) => {
+    const node = tree.getNode(id);
+    if (!node) return;
+    ids.push(id);
+    for (const childId of node.children) {
+      visit(childId);
+    }
+  };
+  visit(rootId);
+  return ids;
 }
 
 function componentTypeToElementType(type: ComponentType): number {

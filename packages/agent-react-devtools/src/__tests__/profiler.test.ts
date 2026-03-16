@@ -420,7 +420,7 @@ describe('Profiler', () => {
       expect(appNode.hocDisplayNames).toBeNull();
     });
 
-    it('populates initialTreeBaseDurations from first commit', () => {
+    it('populates initialTreeBaseDurations for all tree nodes', () => {
       profiler.start('test');
       profiler.processProfilingData({
         commitData: [
@@ -441,8 +441,12 @@ describe('Profiler', () => {
       profiler.stop(tree);
 
       const root = profiler.getExportData(tree)!.dataForRoots[0];
-      // Should use first commit's self durations
-      expect(root.initialTreeBaseDurations).toEqual(expect.arrayContaining([[1, 5], [2, 3]]));
+      // Should include ALL tree nodes, using latest self duration (0 for unrendered)
+      expect(root.initialTreeBaseDurations).toEqual(expect.arrayContaining([
+        [1, 4],  // latest from commit 2
+        [2, 3],  // from commit 1 (not in commit 2)
+        [3, 0],  // never rendered — defaults to 0
+      ]));
     });
 
     it('produces JSON that can be serialized and parsed', () => {
