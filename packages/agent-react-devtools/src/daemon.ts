@@ -73,11 +73,18 @@ class Daemon {
     await this.startIpc(socketPath);
 
     // Write daemon info
+    let buildMtime: number | undefined;
+    try {
+      buildMtime = fs.statSync(new URL(import.meta.url).pathname).mtimeMs;
+    } catch {
+      // ignore
+    }
     const info: DaemonInfo = {
       pid: process.pid,
       port: this.port,
       socketPath,
       startedAt: this.startedAt,
+      buildMtime,
     };
     fs.writeFileSync(getDaemonInfoPath(), JSON.stringify(info, null, 2));
 

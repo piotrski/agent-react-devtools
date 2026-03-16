@@ -143,6 +143,8 @@ export interface DaemonInfo {
   port: number;
   socketPath: string;
   startedAt: number;
+  /** mtime of daemon.js when the daemon was spawned */
+  buildMtime?: number;
 }
 
 export interface StatusInfo {

@@ -51,7 +51,11 @@ export async function ensureDaemon(port?: number): Promise<void> {
     );
     try {
       const stat = fs.statSync(daemonScript);
-      if (stat.mtimeMs > info.startedAt) {
+      const stale = info.buildMtime !== undefined
+        ? stat.mtimeMs !== info.buildMtime
+        : stat.mtimeMs > info.startedAt;
+      if (stale) {
+        port = port ?? info.port;
         stopDaemon();
       } else {
         return;
