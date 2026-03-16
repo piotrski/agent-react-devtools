@@ -110,7 +110,7 @@ export class Profiler {
    * - changeDescriptions: Map<id, description>
    */
   processProfilingData(payload: unknown): void {
-    if (!this.session || this.session.stoppedAt !== null) return;
+    if (!this.session) return;
 
     const data = payload as {
       dataForRoots?: Array<{
