@@ -45,7 +45,6 @@ function isDaemonAlive(info: DaemonInfo): boolean {
 export async function ensureDaemon(port?: number): Promise<void> {
   const info = readDaemonInfo();
   if (info && isDaemonAlive(info)) {
-    // Check if the daemon script has been rebuilt since the daemon started
     const daemonScript = path.join(
       path.dirname(new URL(import.meta.url).pathname),
       'daemon.js',
@@ -53,13 +52,12 @@ export async function ensureDaemon(port?: number): Promise<void> {
     try {
       const stat = fs.statSync(daemonScript);
       if (stat.mtimeMs > info.startedAt) {
-        // Daemon is stale — restart it
         stopDaemon();
       } else {
-        return; // Already running and up to date
+        return;
       }
     } catch {
-      return; // Can't stat — assume it's fine
+      return;
     }
   }
 
