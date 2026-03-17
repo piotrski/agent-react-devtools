@@ -4,6 +4,6 @@
 
 Add `profile export <file>` command
 
-- Exports profiling data in React DevTools Profiler JSON format (version 5)
-- Output can be imported into React DevTools via the Profiler tab
-- Includes commit data, fiber durations, change descriptions, and component snapshots
+- Exports profiling session as a JSON file compatible with the React DevTools Profiler
+- Import the file in the browser extension's Profiler tab to visualize flame graphs, ranked charts, and commit timelines
+- Includes commit data, fiber durations, change descriptions, effect durations, and component snapshots
