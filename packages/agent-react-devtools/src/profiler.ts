@@ -5,13 +5,10 @@ import type {
   ComponentRenderReport,
   RenderCause,
   ChangedKeys,
-  ComponentType,
   ProfilingDataExport,
-  ProfilingDataForRootExport,
-  CommitDataExport,
-  SnapshotNodeExport,
 } from './types.js';
 import type { ComponentTree } from './component-tree.js';
+import { buildExportData } from './profile-export.js';
 
 export interface ProfileSummary {
   name: string;
@@ -60,6 +57,7 @@ export class Profiler {
       startedAt: Date.now(),
       stoppedAt: null,
       commits: [],
+      rawRoots: [],
     };
   }
 
@@ -114,32 +112,34 @@ export class Profiler {
 
     const data = payload as {
       dataForRoots?: Array<{
-        commitData?: Array<{
-          changeDescriptions?: Array<[number, unknown]> | Map<number, unknown>;
-          duration?: number;
-          fiberActualDurations?: Array<[number, number]> | number[];
-          fiberSelfDurations?: Array<[number, number]> | number[];
-          timestamp?: number;
-        }>;
-        operations?: unknown[];
+        rootID?: number;
+        commitData?: unknown[];
+        operations?: Array<number[]>;
+        initialTreeBaseDurations?: Array<[number, number]>;
+        snapshots?: Array<[number, unknown]>;
+        displayName?: string;
       }>;
       // Alternative flat format
-      commitData?: Array<{
-        changeDescriptions?: Array<[number, unknown]> | Map<number, unknown>;
-        duration?: number;
-        fiberActualDurations?: Array<[number, number]> | number[];
-        fiberSelfDurations?: Array<[number, number]> | number[];
-        timestamp?: number;
-      }>;
+      commitData?: unknown[];
     };
 
     // Handle nested format (dataForRoots)
     const roots = data?.dataForRoots;
     if (roots) {
       for (const root of roots) {
+        // Store raw root data for export passthrough
+        this.session.rawRoots.push({
+          rootID: root.rootID ?? 1,
+          commitData: root.commitData ?? [],
+          initialTreeBaseDurations: root.initialTreeBaseDurations ?? [],
+          operations: root.operations ?? [],
+          snapshots: root.snapshots ?? [],
+          displayName: root.displayName ?? 'Root',
+        });
+
         if (root.commitData) {
           for (const commitData of root.commitData) {
-            this.processCommitData(commitData);
+            this.processCommitData(commitData as Record<string, unknown>);
           }
         }
       }
@@ -149,40 +149,39 @@ export class Profiler {
     // Handle flat format
     if (data?.commitData) {
       for (const commitData of data.commitData) {
-        this.processCommitData(commitData);
+        this.processCommitData(commitData as Record<string, unknown>);
       }
     }
   }
 
-  private processCommitData(commitData: {
-    changeDescriptions?: Array<[number, unknown]> | Map<number, unknown>;
-    duration?: number;
-    fiberActualDurations?: Array<[number, number]> | number[];
-    fiberSelfDurations?: Array<[number, number]> | number[];
-    timestamp?: number;
-  }): void {
+  private processCommitData(commitData: Record<string, unknown>): void {
     const commit: ProfilingCommit = {
-      timestamp: commitData.timestamp || Date.now(),
-      duration: commitData.duration || 0,
+      timestamp: (commitData.timestamp as number) || Date.now(),
+      duration: (commitData.duration as number) || 0,
       fiberActualDurations: new Map(),
       fiberSelfDurations: new Map(),
       changeDescriptions: new Map(),
+      effectDuration: (commitData.effectDuration as number) ?? null,
+      passiveEffectDuration: (commitData.passiveEffectDuration as number) ?? null,
+      priorityLevel: (commitData.priorityLevel as string) ?? null,
+      updaters: (commitData.updaters as unknown[]) ?? null,
     };
 
     // Parse fiber durations (can be [id, duration, id, duration, ...] or [[id, duration], ...])
     if (commitData.fiberActualDurations) {
-      parseDurations(commitData.fiberActualDurations, commit.fiberActualDurations);
+      parseDurations(commitData.fiberActualDurations as Array<[number, number]> | number[], commit.fiberActualDurations);
     }
     if (commitData.fiberSelfDurations) {
-      parseDurations(commitData.fiberSelfDurations, commit.fiberSelfDurations);
+      parseDurations(commitData.fiberSelfDurations as Array<[number, number]> | number[], commit.fiberSelfDurations);
     }
 
     // Parse change descriptions
-    if (commitData.changeDescriptions) {
+    const rawDescs = commitData.changeDescriptions as Array<[number, unknown]> | Map<number, unknown> | undefined;
+    if (rawDescs) {
       const entries =
-        commitData.changeDescriptions instanceof Map
-          ? commitData.changeDescriptions.entries()
-          : commitData.changeDescriptions[Symbol.iterator]();
+        rawDescs instanceof Map
+          ? rawDescs.entries()
+          : rawDescs[Symbol.iterator]();
       for (const [id, desc] of entries) {
         const d = desc as {
           didHooksChange?: boolean;
@@ -322,104 +321,9 @@ export class Profiler {
     return entries;
   }
 
-  /**
-   * Export profiling data in React DevTools Profiler format (version 5).
-   * The output can be imported into React DevTools via the Profiler tab.
-   */
   getExportData(tree: ComponentTree): ProfilingDataExport | null {
-    if (!this.session || this.session.commits.length === 0) return null;
-
-    // Group commits by root ID (most apps have one root)
-    const rootIds = tree.getRootIds();
-    if (rootIds.length === 0) {
-      // Fallback: use a synthetic root
-      rootIds.push(1);
-    }
-
-    const dataForRoots: ProfilingDataForRootExport[] = [];
-
-    for (const rootId of rootIds) {
-      const rootNode = tree.getNode(rootId);
-
-      // Build snapshots from current tree
-      const snapshots: Array<[number, SnapshotNodeExport]> = [];
-      const allNodeIds = tree.getAllNodeIds();
-      for (const nodeId of allNodeIds) {
-        const node = tree.getNode(nodeId);
-        if (!node) continue;
-        snapshots.push([nodeId, {
-          id: nodeId,
-          children: node.children,
-          displayName: node.displayName || null,
-          hocDisplayNames: null,
-          key: node.key,
-          type: componentTypeToElementType(node.type),
-          compiledWithForget: false,
-        }]);
-      }
-
-      // Build initial tree base durations from first commit
-      const initialTreeBaseDurations: Array<[number, number]> = [];
-      if (this.session.commits.length > 0) {
-        const firstCommit = this.session.commits[0];
-        for (const [id, duration] of firstCommit.fiberSelfDurations) {
-          initialTreeBaseDurations.push([id, duration]);
-        }
-      }
-
-      // Convert commits
-      const commitData: CommitDataExport[] = this.session.commits.map(
-        (commit) => this.convertCommit(commit),
-      );
-
-      dataForRoots.push({
-        commitData,
-        displayName: rootNode?.displayName || 'Root',
-        initialTreeBaseDurations,
-        operations: this.session.commits.map(() => []),
-        rootID: rootId,
-        snapshots,
-      });
-    }
-
-    return {
-      version: 5,
-      dataForRoots,
-    };
-  }
-
-  private convertCommit(commit: ProfilingCommit): CommitDataExport {
-    const changeDescriptions: Array<[number, {
-      context: null;
-      didHooksChange: boolean;
-      isFirstMount: boolean;
-      props: string[] | null;
-      state: string[] | null;
-      hooks: number[] | null;
-    }]> = [];
-
-    for (const [id, desc] of commit.changeDescriptions) {
-      changeDescriptions.push([id, {
-        context: null,
-        didHooksChange: desc.didHooksChange,
-        isFirstMount: desc.isFirstMount,
-        props: desc.props,
-        state: desc.state,
-        hooks: desc.hooks,
-      }]);
-    }
-
-    return {
-      changeDescriptions: changeDescriptions.length > 0 ? changeDescriptions : null,
-      duration: commit.duration,
-      effectDuration: null,
-      fiberActualDurations: Array.from(commit.fiberActualDurations.entries()),
-      fiberSelfDurations: Array.from(commit.fiberSelfDurations.entries()),
-      passiveEffectDuration: null,
-      priorityLevel: null,
-      timestamp: commit.timestamp,
-      updaters: null,
-    };
+    if (!this.session) return null;
+    return buildExportData(this.session, tree);
   }
 
   private getAllReports(tree: ComponentTree): ComponentRenderReport[] {
@@ -439,21 +343,6 @@ export class Profiler {
       if (report) reports.push(report);
     }
     return reports;
-  }
-}
-
-function componentTypeToElementType(type: ComponentType): number {
-  switch (type) {
-    case 'class': return 1;
-    case 'context': return 2;
-    case 'function': return 5;
-    case 'forwardRef': return 6;
-    case 'host': return 7;
-    case 'memo': return 8;
-    case 'profiler': return 10;
-    case 'suspense': return 12;
-    case 'other': return 9;
-    default: return 9;
   }
 }
 

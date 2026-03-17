@@ -46,6 +46,8 @@ export interface ProfilingSession {
   startedAt: number;
   stoppedAt: number | null;
   commits: ProfilingCommit[];
+  /** Raw per-root data from React DevTools, stored for export passthrough. */
+  rawRoots: ProfilingRootRawData[];
 }
 
 export interface ProfilingCommit {
@@ -54,6 +56,20 @@ export interface ProfilingCommit {
   fiberActualDurations: Map<number, number>;
   fiberSelfDurations: Map<number, number>;
   changeDescriptions: Map<number, ChangeDescription>;
+  effectDuration: number | null;
+  passiveEffectDuration: number | null;
+  priorityLevel: string | null;
+  updaters: unknown[] | null;
+}
+
+/** Raw per-root profiling data from React DevTools, stored for export passthrough. */
+export interface ProfilingRootRawData {
+  rootID: number;
+  commitData: unknown[];
+  initialTreeBaseDurations: Array<[number, number]>;
+  operations: Array<number[]>;
+  snapshots: Array<[number, unknown]>;
+  displayName: string;
 }
 
 export interface ChangeDescription {
