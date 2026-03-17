@@ -53,7 +53,7 @@ Profiling:
   profile timeline [--limit N]  Commit timeline
   profile commit <N | #N> [--limit N]  Detail for specific commit
   profile export <file>               Export as React DevTools JSON
-  profile diff <a.json> <b.json> [--limit N]  Compare two exports`;
+  profile diff <before.json> <after.json> [--limit N] [--threshold N]  Compare two exports`;
 }
 
 function parseArgs(argv: string[]): {
@@ -131,14 +131,27 @@ async function main(): Promise<void> {
       const fileA = command[2];
       const fileB = command[3];
       if (!fileA || !fileB) {
-        console.error('Usage: devtools profile diff <before.json> <after.json> [--limit N]');
+        console.error('Usage: devtools profile diff <before.json> <after.json> [--limit N] [--threshold N]');
         process.exit(1);
       }
       const { loadExportFile, diffProfiles } = await import('./profile-diff.js');
-      const before = loadExportFile(resolve(fileA));
-      const after = loadExportFile(resolve(fileB));
-      const diff = diffProfiles(before, after);
+      let before: ReturnType<typeof loadExportFile>;
+      let after: ReturnType<typeof loadExportFile>;
+      try {
+        before = loadExportFile(resolve(fileA));
+      } catch (e) {
+        console.error(`Error reading ${fileA}: ${(e as Error).message}`);
+        process.exit(1);
+      }
+      try {
+        after = loadExportFile(resolve(fileB));
+      } catch (e) {
+        console.error(`Error reading ${fileB}: ${(e as Error).message}`);
+        process.exit(1);
+      }
       const limit = parseNumericFlag(flags, 'limit');
+      const threshold = parseNumericFlag(flags, 'threshold');
+      const diff = diffProfiles(before, after, threshold);
       console.log(formatProfileDiff(diff, limit));
       return;
     }

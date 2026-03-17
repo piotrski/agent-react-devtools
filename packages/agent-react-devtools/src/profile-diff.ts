@@ -29,6 +29,7 @@ export interface ProfileDiffResult {
     totalCommitsAfter: number;
     totalDurationBefore: number;
     totalDurationAfter: number;
+    thresholdPct: number;
   };
 }
 
@@ -57,6 +58,8 @@ export function extractStats(data: ProfilingDataExport): Map<string, ComponentSt
 
   for (const root of data.dataForRoots) {
     for (const commit of root.commitData) {
+      const selfMap = new Map(commit.fiberSelfDurations);
+
       for (const [id, duration] of commit.fiberActualDurations) {
         const name = nameMap.get(id);
         if (!name) continue;
@@ -70,10 +73,9 @@ export function extractStats(data: ProfilingDataExport): Map<string, ComponentSt
         entry.count++;
         if (duration > entry.maxActual) entry.maxActual = duration;
 
-        // Find matching self duration
-        const selfEntry = commit.fiberSelfDurations.find(([sid]) => sid === id);
-        if (selfEntry) {
-          entry.totalSelf += selfEntry[1];
+        const selfDuration = selfMap.get(id);
+        if (selfDuration !== undefined) {
+          entry.totalSelf += selfDuration;
         }
       }
     }
@@ -111,11 +113,12 @@ function getTotalCommits(data: ProfilingDataExport): number {
   return total;
 }
 
-const THRESHOLD_PCT = 5;
+const DEFAULT_THRESHOLD_PCT = 5;
 
 export function diffProfiles(
   before: ProfilingDataExport,
   after: ProfilingDataExport,
+  thresholdPct = DEFAULT_THRESHOLD_PCT,
 ): ProfileDiffResult {
   const statsBefore = extractStats(before);
   const statsAfter = extractStats(after);
@@ -168,9 +171,9 @@ export function diffProfiles(
         renderCountDelta: a.renderCount - b.renderCount,
       };
 
-      if (pct !== null && pct > THRESHOLD_PCT) {
+      if (pct !== null && pct > thresholdPct) {
         regressed.push(entry);
-      } else if (pct !== null && pct < -THRESHOLD_PCT) {
+      } else if (pct !== null && pct < -thresholdPct) {
         improved.push(entry);
       }
       // within threshold = unchanged, skip
@@ -193,6 +196,7 @@ export function diffProfiles(
       totalCommitsAfter: getTotalCommits(after),
       totalDurationBefore: getTotalDuration(before),
       totalDurationAfter: getTotalDuration(after),
+      thresholdPct,
     },
   };
 }

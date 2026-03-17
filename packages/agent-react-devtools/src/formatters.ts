@@ -374,7 +374,7 @@ export function formatProfileDiff(diff: ProfileDiffResult, limit?: number): stri
 
   if (diff.regressed.length === 0 && diff.improved.length === 0 && diff.added.length === 0 && diff.removed.length === 0) {
     lines.push('');
-    lines.push('No significant changes (all within 5% threshold)');
+    lines.push(`No significant changes (all within ${s.thresholdPct}% threshold)`);
   }
 
   return lines.join('\n');
