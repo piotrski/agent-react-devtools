@@ -144,6 +144,8 @@ agent-react-devtools profile slow [--limit N]        # Slowest components by avg
 agent-react-devtools profile rerenders [--limit N]   # Most re-rendered components
 agent-react-devtools profile timeline [--limit N]    # Commit timeline
 agent-react-devtools profile commit <N | #N> [--limit N]  # Single commit detail
+agent-react-devtools profile export <file>               # Export as React DevTools Profiler JSON
+agent-react-devtools profile diff <before.json> <after.json> [--limit N] [--threshold N]  # Compare two exports
 ```
 
 ## Connecting Your App
