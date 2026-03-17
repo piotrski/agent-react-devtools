@@ -46,6 +46,8 @@ export interface ProfilingSession {
   startedAt: number;
   stoppedAt: number | null;
   commits: ProfilingCommit[];
+  /** Raw per-root data from React DevTools, stored for export passthrough. */
+  rawRoots: ProfilingRootRawData[];
 }
 
 export interface ProfilingCommit {
@@ -54,6 +56,20 @@ export interface ProfilingCommit {
   fiberActualDurations: Map<number, number>;
   fiberSelfDurations: Map<number, number>;
   changeDescriptions: Map<number, ChangeDescription>;
+  effectDuration: number | null;
+  passiveEffectDuration: number | null;
+  priorityLevel: string | null;
+  updaters: unknown[] | null;
+}
+
+/** Raw per-root profiling data from React DevTools, stored for export passthrough. */
+export interface ProfilingRootRawData {
+  rootID: number;
+  commitData: unknown[];
+  initialTreeBaseDurations: Array<[number, number]>;
+  operations: Array<number[]>;
+  snapshots: Array<[number, unknown]>;
+  displayName: string;
 }
 
 export interface ChangeDescription {
@@ -91,6 +107,54 @@ export type RenderCause =
   | 'force-update'
   | 'first-mount';
 
+// ── React DevTools Profiler Export (version 5) ──
+
+export interface ProfilingDataExport {
+  version: 5;
+  dataForRoots: ProfilingDataForRootExport[];
+  timelineData?: unknown[];
+}
+
+export interface ProfilingDataForRootExport {
+  commitData: CommitDataExport[];
+  displayName: string;
+  initialTreeBaseDurations: Array<[number, number]>;
+  operations: Array<Array<number>>;
+  rootID: number;
+  snapshots: Array<[number, SnapshotNodeExport]>;
+}
+
+export interface CommitDataExport {
+  changeDescriptions: Array<[number, ChangeDescriptionExport]> | null;
+  duration: number;
+  effectDuration: number | null;
+  fiberActualDurations: Array<[number, number]>;
+  fiberSelfDurations: Array<[number, number]>;
+  passiveEffectDuration: number | null;
+  priorityLevel: string | null;
+  timestamp: number;
+  updaters: Array<{ id: number; displayName: string; type: number }> | null;
+}
+
+export interface ChangeDescriptionExport {
+  context: null;
+  didHooksChange: boolean;
+  isFirstMount: boolean;
+  props: string[] | null;
+  state: string[] | null;
+  hooks: number[] | null;
+}
+
+export interface SnapshotNodeExport {
+  id: number;
+  children: number[];
+  displayName: string | null;
+  hocDisplayNames: string[] | null;
+  key: string | null;
+  type: number;
+  compiledWithForget: boolean;
+}
+
 // ── Connection Health ──
 
 export type ConnectionEventType = 'connected' | 'disconnected' | 'reconnected';
@@ -123,6 +187,7 @@ export type IpcCommand =
   | { type: 'profile-rerenders'; limit?: number }
   | { type: 'profile-timeline'; limit?: number }
   | { type: 'profile-commit'; index: number; limit?: number }
+  | { type: 'profile-export' }
   | { type: 'wait'; condition: 'connected'; timeout?: number }
   | { type: 'wait'; condition: 'component'; name: string; timeout?: number };
 
