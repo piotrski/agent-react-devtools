@@ -410,14 +410,20 @@ export class ComponentTree {
       if (!node) return;
       if (maxDepth !== undefined && depth > maxDepth) return;
 
+      // Assign label for every node (even skipped hosts) so IDs stay stable
+      const label = `@c${labelCounter++}`;
+      this.labelToId.set(label, node.id);
+      this.idToLabel.set(node.id, label);
+
       // Check if this host node should be filtered out
       const skipThis = noHost && node.type === 'host' && !isSignificantHost(node);
 
-      if (!skipThis) {
-        const label = `@c${labelCounter++}`;
-        this.labelToId.set(label, node.id);
-        this.idToLabel.set(node.id, label);
-
+      if (skipThis) {
+        // Promote children to the effective parent at the same depth
+        for (const childId of node.children) {
+          walk(childId, depth, effectiveParentId);
+        }
+      } else {
         const treeNode: TreeNode = {
           id: node.id,
           label,
@@ -434,16 +440,6 @@ export class ComponentTree {
 
         for (const childId of node.children) {
           walk(childId, depth + 1, node.id);
-        }
-      } else {
-        // Labels are still assigned for skipped host nodes so IDs stay stable
-        const label = `@c${labelCounter++}`;
-        this.labelToId.set(label, node.id);
-        this.idToLabel.set(node.id, label);
-
-        // Skip this node: promote children to the effective parent at the same depth
-        for (const childId of node.children) {
-          walk(childId, depth, effectiveParentId);
         }
       }
     };

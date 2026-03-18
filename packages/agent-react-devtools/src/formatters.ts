@@ -93,13 +93,15 @@ export function formatTree(nodes: TreeNode[], hintOrOpts?: string | FormatTreeOp
 
   const lines: string[] = [];
   let truncated = false;
+  // Reserve lines for truncation message (+1) and optional summary footer
+  const lineLimit = maxLines !== undefined
+    ? maxLines - (totalCount !== undefined ? 1 : 0) - 1
+    : Infinity;
 
   function addLine(line: string): boolean {
-    // Reserve lines for truncation message and summary footer
-    const reserve = (totalCount !== undefined ? 1 : 0) + 1; // +1 for truncation line
-    if (maxLines !== undefined && lines.length >= maxLines - reserve) {
+    if (lines.length >= lineLimit) {
       truncated = true;
-      return false; // signal: stop adding
+      return false;
     }
     lines.push(line);
     return true;

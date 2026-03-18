@@ -489,7 +489,6 @@ describe('ComponentTree', () => {
       // With noHost, div is skipped so Header is at depth 1, Deep at depth 2
       const filtered = tree.getTree({ noHost: true, maxDepth: 1 });
       expect(filtered.map((n) => n.displayName)).toEqual(['App', 'Header']);
->>>>>>> ff2ef20 (test: add tests for tree truncation and host filtering)
     });
   });
 });
