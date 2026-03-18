@@ -519,11 +519,12 @@ export class ComponentTree {
    * Resolve either a label string ("@c3") or a numeric ID to a real node ID.
    */
   resolveId(id: number | string): number | undefined {
-    if (typeof id === 'number') return id;
+    if (typeof id === 'number') return this.nodes.has(id) ? id : undefined;
     if (id.startsWith('@c')) return this.labelToId.get(id);
     // Try parsing as number
     const num = parseInt(id, 10);
-    return isNaN(num) ? undefined : num;
+    if (isNaN(num)) return undefined;
+    return this.nodes.has(num) ? num : undefined;
   }
 
   private toTreeNode(node: ComponentNode): TreeNode {
