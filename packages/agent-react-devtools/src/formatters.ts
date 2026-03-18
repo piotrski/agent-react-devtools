@@ -77,9 +77,11 @@ export function formatTree(nodes: TreeNode[], hintOrOpts?: string | FormatTreeOp
     return hint ? `No components (${hint})` : 'No components (is a React app connected?)';
   }
 
-  // Build tree structure from the flat list
+  // Build tree structure and id lookup from the flat list
   const childrenMap = new Map<number | null, TreeNode[]>();
+  const nodeMap = new Map<number, TreeNode>();
   for (const node of nodes) {
+    nodeMap.set(node.id, node);
     const parentId = node.parentId;
     let siblings = childrenMap.get(parentId);
     if (!siblings) {
@@ -104,7 +106,7 @@ export function formatTree(nodes: TreeNode[], hintOrOpts?: string | FormatTreeOp
   }
 
   function walk(nodeId: number, prefix: string, isLast: boolean, isRoot: boolean): boolean {
-    const node = nodes.find((n) => n.id === nodeId);
+    const node = nodeMap.get(nodeId);
     if (!node) return true;
 
     const connector = isRoot ? '' : isLast ? ELBOW : TEE;
@@ -128,9 +130,7 @@ export function formatTree(nodes: TreeNode[], hintOrOpts?: string | FormatTreeOp
       if (runLen > COLLAPSE_THRESHOLD) {
         // Show first COLLAPSE_THRESHOLD items, then a summary line
         for (let j = 0; j < COLLAPSE_THRESHOLD; j++) {
-          const idx = i + j;
-          const isLastChild = runEnd === children.length && j === COLLAPSE_THRESHOLD; // never true; summary line comes after
-          if (!walk(children[idx].id, childPrefix, false, false)) return false;
+          if (!walk(children[i + j].id, childPrefix, false, false)) return false;
         }
         // Summary line for the rest
         const remaining = runLen - COLLAPSE_THRESHOLD;
