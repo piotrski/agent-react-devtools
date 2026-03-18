@@ -404,7 +404,9 @@ export class ComponentTree {
     this.idToLabel.clear();
     let labelCounter = 1;
 
-    // Track the effective parent for each node (used when host nodes are skipped)
+    // Track effective children when host nodes are skipped (for consistent children arrays)
+    const effectiveChildren = noHost ? new Map<number | null, number[]>() : null;
+
     const walk = (id: number, depth: number, effectiveParentId: number | null) => {
       const node = this.nodes.get(id);
       if (!node) return;
@@ -424,6 +426,16 @@ export class ComponentTree {
           walk(childId, depth, effectiveParentId);
         }
       } else {
+        // Record this node as a child of its effective parent
+        if (effectiveChildren) {
+          let siblings = effectiveChildren.get(effectiveParentId);
+          if (!siblings) {
+            siblings = [];
+            effectiveChildren.set(effectiveParentId, siblings);
+          }
+          siblings.push(node.id);
+        }
+
         const treeNode: TreeNode = {
           id: node.id,
           label,
@@ -431,7 +443,7 @@ export class ComponentTree {
           type: node.type,
           key: node.key,
           parentId: rootId !== undefined && depth === 0 ? null : effectiveParentId,
-          children: node.children,
+          children: node.children, // patched below when noHost
           depth,
         };
         if (node.errors > 0) treeNode.errors = node.errors;
@@ -454,6 +466,14 @@ export class ComponentTree {
         walk(rid, 0, null);
       }
     }
+
+    // Patch children arrays to reflect filtered tree when noHost is active
+    if (effectiveChildren) {
+      for (const node of result) {
+        node.children = effectiveChildren.get(node.id) ?? [];
+      }
+    }
+
     return result;
   }
 

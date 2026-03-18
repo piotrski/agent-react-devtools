@@ -93,9 +93,9 @@ export function formatTree(nodes: TreeNode[], hintOrOpts?: string | FormatTreeOp
 
   const lines: string[] = [];
   let truncated = false;
-  // Reserve lines for truncation message (+1) and optional summary footer
+  // Reserve lines for summary footer only; truncation replaces the last tree line
   const lineLimit = maxLines !== undefined
-    ? maxLines - (totalCount !== undefined ? 1 : 0) - 1
+    ? maxLines - (totalCount !== undefined ? 1 : 0)
     : Infinity;
 
   function addLine(line: string): boolean {
@@ -159,7 +159,8 @@ export function formatTree(nodes: TreeNode[], hintOrOpts?: string | FormatTreeOp
   }
 
   if (truncated) {
-    lines.push(`... output truncated at ${maxLines} lines`);
+    // Replace last tree line with truncation notice to stay within budget
+    lines[lines.length - 1] = `... output truncated at ${maxLines} lines`;
   }
 
   // Summary footer

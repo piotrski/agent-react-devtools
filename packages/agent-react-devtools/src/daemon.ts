@@ -173,6 +173,11 @@ class Daemon {
             noHost: cmd.noHost,
             rootId: resolvedRoot,
           });
+          // If a specific root was requested but returned empty, the node
+          // was removed between resolveId and getTree (stale label)
+          if (resolvedRoot !== undefined && treeData.length === 0) {
+            return { ok: false, error: `Component ${cmd.root} not found` };
+          }
           const response: IpcResponse = {
             ok: true,
             data: { nodes: treeData, totalCount },
