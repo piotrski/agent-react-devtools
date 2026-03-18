@@ -119,9 +119,27 @@ agent-react-devtools get tree [--depth N]          # Component hierarchy
 agent-react-devtools get component <@c1 | id>      # Props, state, hooks
 agent-react-devtools find <name> [--exact]          # Search by display name
 agent-react-devtools count                          # Component count by type
+agent-react-devtools errors                         # Components with errors/warnings
 ```
 
 Components are labeled `@c1`, `@c2`, etc. You can use these labels or numeric IDs interchangeably.
+
+Components with errors or warnings are annotated in tree and search output:
+
+```
+@c5 [fn] Form ⚠2 ✗1
+```
+
+Use the `errors` command to list only components with issues:
+
+```sh
+agent-react-devtools errors
+```
+
+```
+@c5 [fn] Form ⚠2 ✗1
+@c8 [fn] Input ✗3
+```
 
 ### Wait
 
@@ -260,6 +278,7 @@ This project uses agent-react-devtools to inspect the running React app.
 - `agent-react-devtools get tree` — see the component hierarchy
 - `agent-react-devtools get component @c1` — inspect a specific component
 - `agent-react-devtools find <Name>` — search for components
+- `agent-react-devtools errors` — list components with errors or warnings
 - `agent-react-devtools profile start` / `profile stop` / `profile slow` — diagnose render performance
 ```
 
