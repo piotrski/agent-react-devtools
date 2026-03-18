@@ -551,14 +551,15 @@ export class ComponentTree {
    * the labeled tree range.
    */
   resolveId(id: number | string): number | undefined {
-    if (typeof id === 'number') return id;
+    if (typeof id === 'number') return this.nodes.has(id) ? id : undefined;
     // Handle @c?(id:N) format for unresolved labels
     const match = id.match(/^@c\?\(id:(\d+)\)$/);
     if (match) return parseInt(match[1], 10);
     if (id.startsWith('@c')) return this.labelToId.get(id);
     // Try parsing as number
     const num = parseInt(id, 10);
-    return isNaN(num) ? undefined : num;
+    if (isNaN(num)) return undefined;
+    return this.nodes.has(num) ? num : undefined;
   }
 
   private toTreeNode(node: ComponentNode): TreeNode {
