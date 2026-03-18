@@ -95,6 +95,40 @@ agent-react-devtools profile slow --limit 5
 
 Compare render counts and durations to confirm improvement.
 
+## Export and Diff Workflow
+
+### Export Profiling Data
+
+After stopping a profiling session, export the data to a JSON file. This file can be imported into the React DevTools Profiler tab for visual analysis, or used as input to `profile diff`.
+
+```bash
+agent-react-devtools profile stop
+agent-react-devtools profile export baseline.json
+```
+
+### Compare Two Profiling Sessions
+
+To identify regressions or verify improvements, export profiles before and after a change, then diff them:
+
+```bash
+# Before the change
+agent-react-devtools profile start "before"
+# ... interact with the app ...
+agent-react-devtools profile stop
+agent-react-devtools profile export before.json
+
+# After the change
+agent-react-devtools profile start "after"
+# ... same interaction ...
+agent-react-devtools profile stop
+agent-react-devtools profile export after.json
+
+# Compare
+agent-react-devtools profile diff before.json after.json
+```
+
+The diff shows regressed, improved, new, and removed components. Use `--threshold` to adjust sensitivity (default: 5%) and `--limit` to cap the number of components per category.
+
 ## Common Performance Issues
 
 ### Cascading re-renders from context or lifted state

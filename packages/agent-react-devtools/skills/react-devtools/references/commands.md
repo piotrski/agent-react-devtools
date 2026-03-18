@@ -81,6 +81,12 @@ Chronological list of React commits during the profiling session. Each entry: in
 ### `agent-react-devtools profile commit <N | #N> [--limit N]`
 Detail for a specific commit by index. Shows per-component self/total duration, render causes, and changed keys.
 
+### `agent-react-devtools profile export <file>`
+Export profiling data as a JSON file importable in the React DevTools Profiler tab. The file can also be used as input to `profile diff`. Requires an active or recently stopped profiling session.
+
+### `agent-react-devtools profile diff <before.json> <after.json> [--limit N] [--threshold N]`
+Compare two exported profiling sessions and show regressed, improved, new, and removed components. Default threshold: 5% — changes below this percentage are not reported. Use `--limit N` to cap the number of components shown per category. Does **not** require the daemon to be running.
+
 ### Changed Keys
 
 When React DevTools reports which specific props, state keys, or hooks triggered a re-render, profiling commands append a `changed:` suffix:
