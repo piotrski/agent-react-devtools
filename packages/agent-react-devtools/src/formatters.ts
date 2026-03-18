@@ -93,8 +93,8 @@ export function formatTree(nodes: TreeNode[], hintOrOpts?: string | FormatTreeOp
   let truncated = false;
 
   function addLine(line: string): boolean {
-    // Reserve 1 line for the summary footer if we have a totalCount
-    const reserve = totalCount !== undefined ? 1 : 0;
+    // Reserve lines for truncation message and summary footer
+    const reserve = (totalCount !== undefined ? 1 : 0) + 1; // +1 for truncation line
     if (maxLines !== undefined && lines.length >= maxLines - reserve) {
       truncated = true;
       return false; // signal: stop adding
