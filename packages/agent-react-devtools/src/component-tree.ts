@@ -418,7 +418,9 @@ export class ComponentTree {
       this.idToLabel.set(node.id, label);
 
       // Check if this host node should be filtered out
-      const skipThis = noHost && node.type === 'host' && !isSignificantHost(node);
+      // Never skip the explicitly requested subtree root
+      const skipThis = noHost && node.type === 'host' && !isSignificantHost(node)
+        && !(rootId !== undefined && id === rootId);
 
       if (skipThis) {
         // Promote children to the effective parent at the same depth

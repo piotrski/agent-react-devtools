@@ -160,7 +160,11 @@ export function formatTree(nodes: TreeNode[], hintOrOpts?: string | FormatTreeOp
 
   if (truncated) {
     // Replace last tree line with truncation notice to stay within budget
-    lines[lines.length - 1] = `... output truncated at ${maxLines} lines`;
+    if (lines.length > 0) {
+      lines[lines.length - 1] = `... output truncated at ${maxLines} lines`;
+    } else {
+      lines.push(`... output truncated at ${maxLines} lines`);
+    }
   }
 
   // Summary footer
