@@ -168,9 +168,9 @@ describe('formatTree', () => {
     ];
 
     const result = formatTree(nodes, { maxLines: 3, totalCount: 100 });
-    // Should have truncation + summary footer
+    // Truncation notice and total count are combined into one line (preserves content lines)
     expect(result).toContain('truncated');
-    expect(result).toContain('components shown');
+    expect(result).toContain('100 total components');
   });
 });
 

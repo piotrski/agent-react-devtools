@@ -159,16 +159,20 @@ export function formatTree(nodes: TreeNode[], hintOrOpts?: string | FormatTreeOp
   }
 
   if (truncated) {
-    // Replace last tree line with truncation notice to stay within budget
-    if (lines.length > 0) {
-      lines[lines.length - 1] = `... output truncated at ${maxLines} lines`;
+    if (totalCount !== undefined) {
+      // Use the reserved footer slot for the truncation notice so no content line is lost.
+      // Combine with total count so the summary info isn't dropped.
+      lines.push(`... output truncated at ${maxLines} lines (${totalCount.toLocaleString()} total components)`);
     } else {
-      lines.push(`... output truncated at ${maxLines} lines`);
+      // No footer reserved — replace last content line with truncation notice.
+      if (lines.length > 0) {
+        lines[lines.length - 1] = `... output truncated at ${maxLines} lines`;
+      } else {
+        lines.push(`... output truncated at ${maxLines} lines`);
+      }
     }
-  }
-
-  // Summary footer
-  if (totalCount !== undefined) {
+  } else if (totalCount !== undefined) {
+    // Summary footer (only when output was not truncated)
     const shown = nodes.length;
     const totalFormatted = totalCount.toLocaleString();
     if (shown < totalCount) {
