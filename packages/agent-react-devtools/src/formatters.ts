@@ -155,7 +155,11 @@ export function formatSearchResults(results: TreeNode[]): string {
   if (results.length === 0) return 'No components found';
 
   return results
-    .map((n) => formatRef({ label: n.label, type: n.type, name: n.displayName, key: n.key, errors: n.errors, warnings: n.warnings }))
+    .map((n) => {
+      // Use numeric id as label when @c label isn't resolved (e.g., tree not traversed)
+      const effectiveLabel = n.label === '@c?' ? `@c?(id:${n.id})` : n.label;
+      return formatRef({ label: effectiveLabel, type: n.type, name: n.displayName, key: n.key, errors: n.errors, warnings: n.warnings });
+    })
     .join('\n');
 }
 
