@@ -500,9 +500,14 @@ export class ComponentTree {
 
   /**
    * Resolve either a label string ("@c3") or a numeric ID to a real node ID.
+   * Also handles the "@c?(id:N)" format emitted by find for components outside
+   * the labeled tree range.
    */
   resolveId(id: number | string): number | undefined {
     if (typeof id === 'number') return id;
+    // Handle @c?(id:N) format for unresolved labels
+    const match = id.match(/^@c\?\(id:(\d+)\)$/);
+    if (match) return parseInt(match[1], 10);
     if (id.startsWith('@c')) return this.labelToId.get(id);
     // Try parsing as number
     const num = parseInt(id, 10);
