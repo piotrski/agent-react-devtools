@@ -293,7 +293,7 @@ export class DevToolsBridge {
         key: string | null;
         props: Record<string, unknown>;
         state: Record<string, unknown> | null;
-        hooks: unknown[] | null;
+        hooks: unknown[] | { data: unknown[]; cleaned: unknown[]; unserializable: unknown[] } | null;
       };
     };
 
@@ -325,7 +325,7 @@ export class DevToolsBridge {
         ? (cleanDehydrated(data.value.state) as Record<string, unknown>)
         : null,
       hooks: data.value.hooks
-        ? parseHooks(data.value.hooks)
+        ? parseHooks(extractHooksArray(data.value.hooks))
         : null,
       renderedAt: null,
     };
@@ -415,6 +415,19 @@ function cleanDehydrated(obj: unknown): unknown {
     cleaned[key] = cleanDehydrated(value);
   }
   return cleaned;
+}
+
+/**
+ * React DevTools may send hooks as a plain array or as a dehydrated object
+ * with { data: unknown[], cleaned: unknown[], unserializable: unknown[] }.
+ * Extract the array in either case.
+ */
+function extractHooksArray(hooks: unknown): unknown[] {
+  if (Array.isArray(hooks)) return hooks;
+  if (hooks && typeof hooks === 'object' && 'data' in hooks && Array.isArray((hooks as Record<string, unknown>).data)) {
+    return (hooks as Record<string, unknown>).data as unknown[];
+  }
+  return [];
 }
 
 function parseHooks(hooks: unknown[]): { name: string; value: unknown; subHooks?: { name: string; value: unknown }[] }[] {
