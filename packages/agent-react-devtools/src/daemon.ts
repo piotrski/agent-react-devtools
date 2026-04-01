@@ -262,7 +262,7 @@ class Daemon {
         case 'profile-timeline':
           return {
             ok: true,
-            data: this.profiler.getTimeline(cmd.limit, cmd.sort),
+            data: this.profiler.getTimeline(cmd.limit, cmd.offset, cmd.sort),
           };
 
         case 'profile-commit': {

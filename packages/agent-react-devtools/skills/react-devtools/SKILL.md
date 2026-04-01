@@ -48,9 +48,10 @@ agent-react-devtools profile slow               # Slowest components by avg rend
 agent-react-devtools profile slow --limit 10    # Top 10
 agent-react-devtools profile rerenders          # Most re-rendered components
 agent-react-devtools profile report @c5         # Detailed report for one component
-agent-react-devtools profile timeline --limit 5                       # Chronological commit list (use --limit; uncapped can dump 300+ lines)
-agent-react-devtools profile timeline --sort duration --limit 5       # Top 5 most expensive commits
-agent-react-devtools profile timeline --sort timeline --limit 5       # Explicit chronological order (same as default)
+agent-react-devtools profile timeline --limit 10                        # First 10 commits (use --limit; uncapped can dump 300+ lines)
+agent-react-devtools profile timeline --limit 10 --offset 10           # Next 10 (pagination)
+agent-react-devtools profile timeline --sort duration --limit 5        # Top 5 most expensive commits
+agent-react-devtools profile timeline --sort timeline --limit 5        # Explicit chronological order (same as default)
 agent-react-devtools profile commit 3           # Detail for commit #3
 agent-react-devtools profile export profile.json # Export as React DevTools Profiler JSON
 agent-react-devtools profile diff before.json after.json  # Compare two exports
@@ -126,6 +127,16 @@ agent-react-devtools profile rerenders --limit 5
 ```
 
 Then inspect the worst offenders with `get component @cN` and `profile report @cN`.
+
+### Browse a long timeline in chunks
+
+```bash
+agent-react-devtools profile timeline --limit 20               # commits 0–19
+agent-react-devtools profile timeline --limit 20 --offset 20   # commits 20–39
+agent-react-devtools profile timeline --offset 30 --limit 10   # skip warm-up, show 30–39
+```
+
+Use `profile commit <N>` to drill into a specific commit once you spot a spike.
 
 ### Find a component and check its state
 

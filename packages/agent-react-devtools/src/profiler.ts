@@ -307,7 +307,7 @@ export class Profiler {
     };
   }
 
-  getTimeline(limit?: number, sort?: 'duration' | 'timeline'): TimelineEntry[] {
+  getTimeline(limit?: number, offset?: number, sort?: 'duration' | 'timeline'): TimelineEntry[] {
     if (!this.session) return [];
 
     const entries = this.session.commits.map((commit, index) => ({
@@ -318,8 +318,9 @@ export class Profiler {
     }));
 
     if (sort === 'duration') entries.sort((a, b) => b.duration - a.duration);
-    if (limit) return entries.slice(0, limit);
-    return entries;
+    const start = offset ?? 0;
+    if (limit) return entries.slice(start, start + limit);
+    return offset ? entries.slice(start) : entries;
   }
 
   getExportData(tree: ComponentTree): ProfilingDataExport | null {
