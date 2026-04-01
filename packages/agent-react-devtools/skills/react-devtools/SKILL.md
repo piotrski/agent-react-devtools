@@ -48,7 +48,7 @@ agent-react-devtools profile slow               # Slowest components by avg rend
 agent-react-devtools profile slow --limit 10    # Top 10
 agent-react-devtools profile rerenders          # Most re-rendered components
 agent-react-devtools profile report @c5         # Detailed report for one component
-agent-react-devtools profile timeline           # Chronological commit list
+agent-react-devtools profile timeline --limit 5 # Chronological commit list (use --limit; uncapped can dump 300+ lines)
 agent-react-devtools profile commit 3           # Detail for commit #3
 agent-react-devtools profile export profile.json # Export as React DevTools Profiler JSON
 agent-react-devtools profile diff before.json after.json  # Compare two exports
