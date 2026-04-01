@@ -307,7 +307,7 @@ export class Profiler {
     };
   }
 
-  getTimeline(limit?: number): TimelineEntry[] {
+  getTimeline(limit?: number, sort?: 'duration' | 'timeline'): TimelineEntry[] {
     if (!this.session) return [];
 
     const entries = this.session.commits.map((commit, index) => ({
@@ -317,6 +317,7 @@ export class Profiler {
       componentCount: commit.fiberActualDurations.size,
     }));
 
+    if (sort === 'duration') entries.sort((a, b) => b.duration - a.duration);
     if (limit) return entries.slice(0, limit);
     return entries;
   }

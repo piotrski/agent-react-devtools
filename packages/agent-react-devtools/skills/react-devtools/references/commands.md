@@ -88,8 +88,10 @@ Output columns: label, type tag, component name, render count, all causes, chang
 ### `agent-react-devtools profile report <@cN | id>`
 Detailed render report for a single component: render count, avg/max/total duration, all render causes, changed keys.
 
-### `agent-react-devtools profile timeline [--limit N]`
+### `agent-react-devtools profile timeline [--limit N] [--sort duration|timeline]`
 Chronological list of React commits during the profiling session. Each entry: index, duration, component count.
+
+Default order is chronological (timeline order). `--sort duration` re-orders entries by duration descending (most expensive first) before applying `--limit` — use this to find the heaviest commits. `--sort timeline` explicitly requests chronological order (same as the default).
 
 ### `agent-react-devtools profile commit <N | #N> [--limit N]`
 Detail for a specific commit by index. Shows per-component self/total duration, render causes, and changed keys.

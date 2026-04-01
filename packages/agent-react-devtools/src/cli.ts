@@ -402,7 +402,11 @@ async function main(): Promise<void> {
 
     if (cmd0 === 'profile' && cmd1 === 'timeline') {
       const limit = parseNumericFlag(flags, 'limit');
-      const resp = await sendCommand({ type: 'profile-timeline', limit });
+      const sortFlag = flags['sort'];
+      const sort = sortFlag === 'duration' ? 'duration' as const
+        : sortFlag === 'timeline' ? 'timeline' as const
+        : undefined;
+      const resp = await sendCommand({ type: 'profile-timeline', limit, sort });
       if (resp.ok) {
         console.log(formatTimeline(resp.data as any));
       } else {

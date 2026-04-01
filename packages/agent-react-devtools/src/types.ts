@@ -189,7 +189,7 @@ export type IpcCommand =
   | { type: 'profile-report'; componentId: number | string }
   | { type: 'profile-slow'; limit?: number }
   | { type: 'profile-rerenders'; limit?: number }
-  | { type: 'profile-timeline'; limit?: number }
+  | { type: 'profile-timeline'; limit?: number; sort?: 'duration' | 'timeline' }
   | { type: 'profile-commit'; index: number; limit?: number }
   | { type: 'profile-export' }
   | { type: 'errors' }
