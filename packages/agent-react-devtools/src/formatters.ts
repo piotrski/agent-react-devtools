@@ -5,7 +5,7 @@ import type {
   ChangedKeys,
 } from './types.js';
 import type { TreeNode } from './component-tree.js';
-import type { ProfileSummary, TimelineEntry, CommitDetail } from './profiler.js';
+import type { ProfileSummary, TimelineResult, CommitDetail } from './profiler.js';
 import type { ProfileDiffResult, DiffEntry } from './profile-diff.js';
 
 // ── Abbreviations for component types ──
@@ -261,10 +261,20 @@ export function formatRerenders(reports: ComponentRenderReport[]): string {
   return lines.join('\n');
 }
 
-export function formatTimeline(entries: TimelineEntry[]): string {
-  if (entries.length === 0) return 'No profiling data';
+export function formatTimeline(result: TimelineResult): string {
+  if (result.total === 0) return 'No profiling data';
 
-  const lines: string[] = ['Commit timeline:'];
+  const { entries, total, offset } = result;
+  let header: string;
+  if (entries.length === total) {
+    header = `Commit timeline (${total} commits):`;
+  } else {
+    const from = offset + 1;
+    const to = offset + entries.length;
+    header = `Commit timeline (showing ${from}–${to} of ${total}):`;
+  }
+
+  const lines: string[] = [header];
   for (const e of entries) {
     lines.push(
       `  #${e.index}  ${e.duration.toFixed(1)}ms  ${e.componentCount} components`,

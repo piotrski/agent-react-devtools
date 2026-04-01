@@ -24,6 +24,12 @@ export interface TimelineEntry {
   componentCount: number;
 }
 
+export interface TimelineResult {
+  entries: TimelineEntry[];
+  total: number;
+  offset: number;
+}
+
 export interface CommitDetail {
   index: number;
   timestamp: number;
@@ -307,20 +313,23 @@ export class Profiler {
     };
   }
 
-  getTimeline(limit?: number, offset?: number, sort?: 'duration' | 'timeline'): TimelineEntry[] {
-    if (!this.session) return [];
+  getTimeline(limit: number = 20, offset?: number, sort?: 'duration' | 'timeline'): TimelineResult {
+    if (!this.session) return { entries: [], total: 0, offset: offset ?? 0 };
 
-    const entries = this.session.commits.map((commit, index) => ({
+    const all = this.session.commits.map((commit, index) => ({
       index,
       timestamp: commit.timestamp,
       duration: commit.duration,
       componentCount: commit.fiberActualDurations.size,
     }));
 
-    if (sort === 'duration') entries.sort((a, b) => b.duration - a.duration);
+    if (sort === 'duration') all.sort((a, b) => b.duration - a.duration);
     const start = offset ?? 0;
-    if (limit) return entries.slice(start, start + limit);
-    return offset ? entries.slice(start) : entries;
+    return {
+      entries: all.slice(start, start + limit),
+      total: all.length,
+      offset: start,
+    };
   }
 
   getExportData(tree: ComponentTree): ProfilingDataExport | null {

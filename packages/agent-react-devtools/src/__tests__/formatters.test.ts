@@ -17,7 +17,7 @@ import {
 } from '../formatters.js';
 import type { TreeNode } from '../component-tree.js';
 import type { InspectedElement, StatusInfo, ComponentRenderReport, ConnectionHealth, ChangedKeys } from '../types.js';
-import type { ProfileSummary, TimelineEntry, CommitDetail } from '../profiler.js';
+import type { ProfileSummary, TimelineResult, CommitDetail } from '../profiler.js';
 
 describe('formatTree', () => {
   it('should format empty tree', () => {
@@ -356,17 +356,54 @@ describe('formatRerenders', () => {
 });
 
 describe('formatTimeline', () => {
-  it('should format timeline entries', () => {
-    const entries: TimelineEntry[] = [
-      { index: 0, timestamp: 1000, duration: 12.5, componentCount: 5 },
-      { index: 1, timestamp: 2000, duration: 8.3, componentCount: 3 },
-    ];
+  it('should format timeline entries showing all commits', () => {
+    const result: TimelineResult = {
+      entries: [
+        { index: 0, timestamp: 1000, duration: 12.5, componentCount: 5 },
+        { index: 1, timestamp: 2000, duration: 8.3, componentCount: 3 },
+      ],
+      total: 2,
+      offset: 0,
+    };
 
-    const result = formatTimeline(entries);
-    expect(result).toContain('#0');
-    expect(result).toContain('12.5ms');
-    expect(result).toContain('#1');
-    expect(result).toContain('8.3ms');
+    const output = formatTimeline(result);
+    expect(output).toContain('2 commits');
+    expect(output).toContain('#0');
+    expect(output).toContain('12.5ms');
+    expect(output).toContain('#1');
+    expect(output).toContain('8.3ms');
+  });
+
+  it('should show pagination info when limited', () => {
+    const result: TimelineResult = {
+      entries: [
+        { index: 0, timestamp: 1000, duration: 12.5, componentCount: 5 },
+        { index: 1, timestamp: 2000, duration: 8.3, componentCount: 3 },
+      ],
+      total: 50,
+      offset: 0,
+    };
+
+    const output = formatTimeline(result);
+    expect(output).toContain('showing 1–2 of 50');
+  });
+
+  it('should show correct range with offset', () => {
+    const result: TimelineResult = {
+      entries: [
+        { index: 20, timestamp: 1000, duration: 5.0, componentCount: 2 },
+      ],
+      total: 50,
+      offset: 20,
+    };
+
+    const output = formatTimeline(result);
+    expect(output).toContain('showing 21–21 of 50');
+  });
+
+  it('should return no data message when empty', () => {
+    const result: TimelineResult = { entries: [], total: 0, offset: 0 };
+    expect(formatTimeline(result)).toBe('No profiling data');
   });
 });
 
