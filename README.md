@@ -178,6 +178,12 @@ npx agent-react-devtools init
 
 This detects your framework (Vite, Next.js, CRA) and patches the appropriate config file.
 
+To undo these changes:
+
+```sh
+npx agent-react-devtools uninit
+```
+
 ### One-line import
 
 Add a single import as the first line of your entry point (e.g. `src/main.tsx`):

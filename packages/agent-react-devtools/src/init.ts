@@ -40,14 +40,14 @@ function prependImport(filePath: string, importLine: string, dryRun: boolean): s
   return filePath;
 }
 
-function removeImport(filePath: string, dryRun: boolean): string | null {
+function removeImport(filePath: string, importLine: string, dryRun: boolean): string | null {
   const content = readFileSync(filePath, 'utf-8');
-  if (!content.includes('agent-react-devtools')) {
+  if (!content.includes(importLine)) {
     return null; // not configured
   }
   const newContent = content
     .split('\n')
-    .filter((line) => !line.includes('agent-react-devtools'))
+    .filter((line) => line !== importLine)
     .join('\n');
   if (!dryRun) {
     writeFileSync(filePath, newContent, 'utf-8');
@@ -207,7 +207,7 @@ function unpatchViteConfig(cwd: string, dryRun: boolean): string[] {
 
   let newContent = content
     .split('\n')
-    .filter((line) => !line.includes('agent-react-devtools'))
+    .filter((line) => line !== "import { reactDevtools } from 'agent-react-devtools/vite';")
     .join('\n');
 
   // Remove reactDevtools() call from plugins array (with optional trailing comma)
@@ -235,9 +235,11 @@ function unpatchNextJs(cwd: string, dryRun: boolean): string[] {
 
   if (layoutPath) {
     const devtoolsPath = join(dirname(layoutPath), 'devtools.ts');
+    let devtoolsIsOurs = false;
     if (existsSync(devtoolsPath)) {
       const content = readFileSync(devtoolsPath, 'utf-8');
       if (content.includes('agent-react-devtools')) {
+        devtoolsIsOurs = true;
         if (!dryRun) {
           unlinkSync(devtoolsPath);
         }
@@ -245,17 +247,20 @@ function unpatchNextJs(cwd: string, dryRun: boolean): string[] {
       }
     }
 
-    // Remove the import of ./devtools from layout
-    const layoutContent = readFileSync(layoutPath, 'utf-8');
-    if (layoutContent.includes("'./devtools'") || layoutContent.includes('agent-react-devtools')) {
+    // Only remove the layout import if we confirmed devtools.ts was created by us,
+    // to avoid corrupting a pre-existing import './devtools' that we don't own.
+    if (devtoolsIsOurs) {
+      const layoutContent = readFileSync(layoutPath, 'utf-8');
       const newContent = layoutContent
         .split('\n')
-        .filter((line) => !line.includes("'./devtools'") && !line.includes('agent-react-devtools'))
+        .filter((line) => line !== "import './devtools';")
         .join('\n');
-      if (!dryRun) {
-        writeFileSync(layoutPath, newContent, 'utf-8');
+      if (newContent !== layoutContent) {
+        if (!dryRun) {
+          writeFileSync(layoutPath, newContent, 'utf-8');
+        }
+        modified.push(layoutPath);
       }
-      modified.push(layoutPath);
     }
   }
 
@@ -270,7 +275,7 @@ function unpatchNextJs(cwd: string, dryRun: boolean): string[] {
     'src/pages/_app.js',
   );
   if (pagesEntry) {
-    const result = removeImport(pagesEntry, dryRun);
+    const result = removeImport(pagesEntry, "import 'agent-react-devtools/connect';", dryRun);
     if (result) modified.push(result);
   }
 
@@ -286,7 +291,7 @@ function unpatchCRA(cwd: string, dryRun: boolean): string[] {
   );
   if (!entryPath) return [];
 
-  const result = removeImport(entryPath, dryRun);
+  const result = removeImport(entryPath, "import 'agent-react-devtools/connect';", dryRun);
   return result ? [result] : [];
 }
 
