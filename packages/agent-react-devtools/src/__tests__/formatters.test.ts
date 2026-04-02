@@ -405,6 +405,13 @@ describe('formatTimeline', () => {
     const result: TimelineResult = { entries: [], total: 0, offset: 0 };
     expect(formatTimeline(result)).toBe('No profiling data');
   });
+
+  it('should handle offset past end gracefully', () => {
+    const result: TimelineResult = { entries: [], total: 50, offset: 50 };
+    const output = formatTimeline(result);
+    expect(output).toContain('0 of 50');
+    expect(output).not.toMatch(/showing \d+–\d+/);
+  });
 });
 
 describe('formatCommitDetail', () => {

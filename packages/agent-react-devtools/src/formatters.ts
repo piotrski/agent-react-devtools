@@ -265,6 +265,11 @@ export function formatTimeline(result: TimelineResult): string {
   if (result.total === 0) return 'No profiling data';
 
   const { entries, total, offset } = result;
+
+  if (entries.length === 0) {
+    return `Commit timeline (showing 0 of ${total}): offset past end`;
+  }
+
   let header: string;
   if (entries.length === total) {
     header = `Commit timeline (${total} commits):`;

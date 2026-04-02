@@ -293,11 +293,12 @@ describe('Profiler', () => {
     });
 
     const timeline = profiler.getTimeline();
-    expect(timeline).toHaveLength(2);
-    expect(timeline[0].duration).toBe(10);
-    expect(timeline[0].componentCount).toBe(1);
-    expect(timeline[1].duration).toBe(20);
-    expect(timeline[1].componentCount).toBe(2);
+    expect(timeline.entries).toHaveLength(2);
+    expect(timeline.total).toBe(2);
+    expect(timeline.entries[0].duration).toBe(10);
+    expect(timeline.entries[0].componentCount).toBe(1);
+    expect(timeline.entries[1].duration).toBe(20);
+    expect(timeline.entries[1].componentCount).toBe(2);
   });
 
   describe('getExportData', () => {
