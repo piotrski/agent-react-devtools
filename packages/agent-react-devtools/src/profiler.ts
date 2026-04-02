@@ -324,7 +324,7 @@ export class Profiler {
     }));
 
     if (sort === 'duration') all.sort((a, b) => b.duration - a.duration);
-    const start = offset ?? 0;
+    const start = Math.max(0, offset ?? 0);
     return {
       entries: all.slice(start, start + limit),
       total: all.length,
