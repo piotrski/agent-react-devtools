@@ -34,7 +34,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/piotrski/agent-react-devtools.git",
+    "url": "https://github.com/callstackincubator/agent-react-devtools.git",
     "directory": "packages/agent-react-devtools"
   },
   "license": "MIT",
