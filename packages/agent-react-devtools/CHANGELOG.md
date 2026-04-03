@@ -1,5 +1,66 @@
 # agent-react-devtools
 
+## 0.4.0
+
+### Minor Changes
+
+- 0c307e2: Track and expose component error/warning counts
+
+  Components now track error and warning counts from the React DevTools protocol (`UPDATE_ERRORS_OR_WARNINGS` operations).
+
+  - New `errors` command lists components with non-zero error or warning counts
+  - `get component` output includes error/warning counts when non-zero
+  - Tree, search, and component output annotates affected components (e.g., `@c5 [fn] Form ⚠2 ✗1`)
+
+- 65c391f: Add `profile diff <before.json> <after.json>` command
+
+  - Compares two profiling exports side by side
+  - Shows regressed, improved, new, and removed components
+  - Aggregates by display name, computes avg/max duration deltas
+  - Configurable threshold filters noise from insignificant changes (default 5%, adjust with `--threshold`)
+  - No daemon required - works purely on exported JSON files
+
+- 5c5ace6: Add `profile export <file>` command
+
+  - Exports profiling session as a JSON file compatible with the React DevTools Profiler
+  - Import the file in the browser extension's Profiler tab to visualize flame graphs, ranked charts, and commit timelines
+  - Includes commit data, fiber durations, change descriptions, effect durations, and component snapshots
+
+- b0e64b8: Pagination and sorting for `profile timeline`
+
+  Large profiling sessions no longer flood agent context with hundreds of commits:
+
+  - **Default limit of 20**: `profile timeline` returns at most 20 entries unless `--limit N` is specified.
+  - **`--offset N` flag**: Skip the first N commits for pagination.
+  - **`--sort duration`**: Sort commits by render duration (slowest first) instead of chronological order.
+  - **Paginated header**: Output shows `Commit timeline (showing 1–20 of 87):` when paginated, or `Commit timeline (87 commits):` when all results fit on one page.
+
+- a1bed65: Smart tree truncation and subtree extraction for large component trees
+
+  Large React apps (500-2000+ components) now produce much smaller `get tree` output:
+
+  - **Host filtering by default**: `<div>`, `<span>`, and other host components are hidden (use `--all` to show them). Host components with keys or custom element names are always shown.
+  - **Sibling collapsing**: When a parent has many children with the same display name (e.g. list items), only the first 3 are shown with a `... +N more ComponentName` summary.
+  - **Summary footer**: Output ends with `N components shown (M total)` so the agent knows how much was filtered.
+  - **`--max-lines N` flag**: Hard cap on output lines to stay within context budgets.
+  - **Subtree extraction**: `get tree @c5` shows only the subtree rooted at a specific component. Labels are re-assigned starting from `@c1` within the subtree. Combine with `--depth N` to limit depth within the subtree.
+
+- c7127db: Add `uninit` command to reverse framework configuration
+
+  `agent-react-devtools uninit` removes the changes made by `init` — restoring your config files to their original state.
+
+  - Supports all frameworks: Vite, Next.js (Pages Router and App Router), CRA
+  - `--dry-run` flag previews what would be removed without writing any files
+  - Safe to run on projects not configured by `init` (no-op)
+
+### Patch Changes
+
+- 68bd0fc: Auto-restart daemon when CLI detects the binary has been rebuilt since the daemon started. Previously, rebuilding the package required manually stopping and restarting the daemon for changes to take effect.
+- 90d1344: Fix component inspection crash and unresolvable find results
+
+  - Fixed a crash in hook parsing that caused `get component` to silently time out on all components in affected apps
+  - Components outside the labeled tree range now show a usable ID (e.g. `@c?(id:667)`) in `find` results
+
 ## 0.3.0
 
 ### Minor Changes
