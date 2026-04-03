@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, unlinkSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 
 type Framework = 'vite' | 'nextjs' | 'cra' | 'react-native' | 'unknown';
@@ -34,6 +34,21 @@ function prependImport(filePath: string, importLine: string, dryRun: boolean): s
     return null; // already configured
   }
   const newContent = importLine + '\n' + content;
+  if (!dryRun) {
+    writeFileSync(filePath, newContent, 'utf-8');
+  }
+  return filePath;
+}
+
+function removeImport(filePath: string, importLine: string, dryRun: boolean): string | null {
+  const content = readFileSync(filePath, 'utf-8');
+  if (!content.includes(importLine)) {
+    return null; // not configured
+  }
+  const newContent = content
+    .split('\n')
+    .filter((line) => line !== importLine)
+    .join('\n');
   if (!dryRun) {
     writeFileSync(filePath, newContent, 'utf-8');
   }
@@ -175,6 +190,158 @@ function patchCRA(cwd: string, dryRun: boolean): string[] {
     dryRun,
   );
   return result ? [result] : [];
+}
+
+function unpatchViteConfig(cwd: string, dryRun: boolean): string[] {
+  const configPath = findFile(
+    cwd,
+    'vite.config.ts',
+    'vite.config.js',
+    'vite.config.mts',
+    'vite.config.mjs',
+  );
+  if (!configPath) return [];
+
+  const content = readFileSync(configPath, 'utf-8');
+  if (!content.includes('agent-react-devtools')) return [];
+
+  let newContent = content
+    .split('\n')
+    .filter((line) => line !== "import { reactDevtools } from 'agent-react-devtools/vite';")
+    .join('\n');
+
+  // Remove reactDevtools() call from plugins array (with optional trailing comma)
+  newContent = newContent.replace(/\s*reactDevtools\(\),?/g, '');
+
+  if (!dryRun) {
+    writeFileSync(configPath, newContent, 'utf-8');
+  }
+  return [configPath];
+}
+
+function unpatchNextJs(cwd: string, dryRun: boolean): string[] {
+  const modified: string[] = [];
+
+  // Remove the devtools.ts wrapper file if it exists and is ours
+  const layoutPath = findFile(
+    cwd,
+    'app/layout.tsx',
+    'app/layout.jsx',
+    'app/layout.js',
+    'src/app/layout.tsx',
+    'src/app/layout.jsx',
+    'src/app/layout.js',
+  );
+
+  if (layoutPath) {
+    const devtoolsPath = join(dirname(layoutPath), 'devtools.ts');
+    let devtoolsIsOurs = false;
+    if (existsSync(devtoolsPath)) {
+      const content = readFileSync(devtoolsPath, 'utf-8');
+      if (content.includes('agent-react-devtools')) {
+        devtoolsIsOurs = true;
+        if (!dryRun) {
+          unlinkSync(devtoolsPath);
+        }
+        modified.push(devtoolsPath);
+      }
+    }
+
+    // Only remove the layout import if we confirmed devtools.ts was created by us,
+    // to avoid corrupting a pre-existing import './devtools' that we don't own.
+    if (devtoolsIsOurs) {
+      const layoutContent = readFileSync(layoutPath, 'utf-8');
+      const newContent = layoutContent
+        .split('\n')
+        .filter((line) => line !== "import './devtools';")
+        .join('\n');
+      if (newContent !== layoutContent) {
+        if (!dryRun) {
+          writeFileSync(layoutPath, newContent, 'utf-8');
+        }
+        modified.push(layoutPath);
+      }
+    }
+  }
+
+  // Also check Pages Router
+  const pagesEntry = findFile(
+    cwd,
+    'pages/_app.tsx',
+    'pages/_app.jsx',
+    'pages/_app.js',
+    'src/pages/_app.tsx',
+    'src/pages/_app.jsx',
+    'src/pages/_app.js',
+  );
+  if (pagesEntry) {
+    const result = removeImport(pagesEntry, "import 'agent-react-devtools/connect';", dryRun);
+    if (result) modified.push(result);
+  }
+
+  return modified;
+}
+
+function unpatchCRA(cwd: string, dryRun: boolean): string[] {
+  const entryPath = findFile(
+    cwd,
+    'src/index.tsx',
+    'src/index.jsx',
+    'src/index.js',
+  );
+  if (!entryPath) return [];
+
+  const result = removeImport(entryPath, "import 'agent-react-devtools/connect';", dryRun);
+  return result ? [result] : [];
+}
+
+export async function runUninit(
+  cwd: string,
+  dryRun: boolean,
+): Promise<void> {
+  const framework = detectFramework(cwd);
+
+  console.log(`Detected framework: ${framework}`);
+
+  if (framework === 'unknown') {
+    console.log('\nCould not detect framework. Manual removal required:');
+    console.log("  Remove any `import 'agent-react-devtools/connect'` lines");
+    return;
+  }
+
+  if (framework === 'react-native') {
+    console.log('\nReact Native detected - no code changes were made by init.');
+    return;
+  }
+
+  let modified: string[] = [];
+
+  if (dryRun) {
+    console.log('\n[dry-run] Would modify:');
+  }
+
+  switch (framework) {
+    case 'vite':
+      modified = unpatchViteConfig(cwd, dryRun);
+      break;
+    case 'nextjs':
+      modified = unpatchNextJs(cwd, dryRun);
+      break;
+    case 'cra':
+      modified = unpatchCRA(cwd, dryRun);
+      break;
+  }
+
+  if (modified.length === 0) {
+    console.log('  No changes needed (not configured or already removed)');
+    return;
+  }
+
+  for (const f of modified) {
+    console.log(`  ${dryRun ? '[dry-run] ' : ''}Reverted: ${f}`);
+  }
+
+  console.log('\nDone! agent-react-devtools configuration has been removed.');
 }
 
 export async function runInit(

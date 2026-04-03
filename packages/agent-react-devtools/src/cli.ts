@@ -29,6 +29,7 @@ function usage(): string {
 
 Setup:
   init [--dry-run]              Auto-configure your React app
+  uninit [--dry-run]            Remove configuration added by init
 
 Daemon:
   start [--port 8097]           Start daemon
@@ -121,10 +122,16 @@ async function main(): Promise<void> {
   const cmd1 = command[1];
 
   try {
-    // ── Init ──
+    // ── Init / Uninit ──
     if (cmd0 === 'init') {
       const { runInit } = await import('./init.js');
       await runInit(process.cwd(), flags['dry-run'] === true);
+      return;
+    }
+
+    if (cmd0 === 'uninit') {
+      const { runUninit } = await import('./init.js');
+      await runUninit(process.cwd(), flags['dry-run'] === true);
       return;
     }
 
