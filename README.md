@@ -272,7 +272,7 @@ agent-react-devtools status  # Should show "Apps: 1 connected"
 Add the skill to your AI coding assistant for richer context:
 
 ```sh
-npx skills add piotrski/agent-react-devtools
+npx skills add callstackincubator/agent-react-devtools
 ```
 
 This works with Claude Code, Codex, Cursor, Gemini CLI, GitHub Copilot, Goose, OpenCode, and Windsurf.
@@ -282,7 +282,7 @@ This works with Claude Code, Codex, Cursor, Gemini CLI, GitHub Copilot, Goose, O
 You can also install via the Claude Code plugin marketplace:
 
 ```
-/plugin marketplace add piotrski/agent-react-devtools
+/plugin marketplace add callstackincubator/agent-react-devtools
 /plugin install agent-react-devtools@piotrski
 ```
 
