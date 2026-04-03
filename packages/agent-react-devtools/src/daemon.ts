@@ -160,8 +160,28 @@ class Daemon {
           };
 
         case 'get-tree': {
-          const treeData = this.tree.getTree(cmd.depth);
-          const response: IpcResponse = { ok: true, data: treeData };
+          let resolvedRoot: number | undefined;
+          if (cmd.root !== undefined) {
+            resolvedRoot = this.tree.resolveId(cmd.root);
+            if (resolvedRoot === undefined) {
+              return { ok: false, error: `Component ${cmd.root} not found` };
+            }
+          }
+          const totalCount = this.tree.getComponentCount();
+          const treeData = this.tree.getTree({
+            maxDepth: cmd.depth,
+            noHost: cmd.noHost,
+            rootId: resolvedRoot,
+          });
+          // If a specific root was requested but returned empty, the node
+          // was removed between resolveId and getTree (stale label)
+          if (resolvedRoot !== undefined && treeData.length === 0) {
+            return { ok: false, error: `Component ${cmd.root} not found` };
+          }
+          const response: IpcResponse = {
+            ok: true,
+            data: { nodes: treeData, totalCount },
+          };
           if (treeData.length === 0) {
             const health = this.bridge.getConnectionHealth();
             if (health.hasEverConnected && health.connectedApps === 0 && health.lastDisconnectAt !== null) {

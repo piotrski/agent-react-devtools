@@ -58,12 +58,12 @@ describe('Component tree (e2e)', () => {
     const resp = await sendIpcCommand(socketPath, { type: 'get-tree' });
     expect(resp.ok).toBe(true);
 
-    const tree = resp.data as Array<{
+    const { nodes: tree } = resp.data as { nodes: Array<{
       id: number;
       displayName: string;
       type: string;
       children: number[];
-    }>;
+    }>; totalCount: number };
     // Root + App + Header + Footer = 4
     expect(tree).toHaveLength(4);
     const app = tree.find((n) => n.displayName === 'App');

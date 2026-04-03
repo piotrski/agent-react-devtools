@@ -94,6 +94,24 @@ export interface TreeNode {
   warnings?: number;
 }
 
+export interface GetTreeOptions {
+  maxDepth?: number;
+  /** When true, filter out host components (unless they have a key or custom element name) */
+  noHost?: boolean;
+  /** When set, only return the subtree rooted at this component ID */
+  rootId?: number;
+}
+
+/**
+ * Check if a host component should be kept even when filtering.
+ * Custom elements (contain a hyphen) and keyed host components are kept.
+ */
+function isSignificantHost(node: ComponentNode): boolean {
+  if (node.key !== null) return true;
+  if (node.displayName.includes('-')) return true; // custom element
+  return false;
+}
+
 export class ComponentTree {
   private nodes = new Map<number, ComponentNode>();
   private roots: number[] = [];
@@ -372,7 +390,13 @@ export class ComponentTree {
     return this.nodes.get(id);
   }
 
-  getTree(maxDepth?: number): TreeNode[] {
+  getTree(maxDepthOrOpts?: number | GetTreeOptions): TreeNode[] {
+    const opts: GetTreeOptions =
+      typeof maxDepthOrOpts === 'number'
+        ? { maxDepth: maxDepthOrOpts }
+        : maxDepthOrOpts || {};
+    const { maxDepth, noHost, rootId } = opts;
+
     const result: TreeNode[] = [];
 
     // Rebuild label maps on every getTree() call
@@ -380,37 +404,78 @@ export class ComponentTree {
     this.idToLabel.clear();
     let labelCounter = 1;
 
-    const walk = (id: number, depth: number) => {
+    // Track effective children when host nodes are skipped (for consistent children arrays)
+    const effectiveChildren = noHost ? new Map<number | null, number[]>() : null;
+
+    const walk = (id: number, depth: number, effectiveParentId: number | null) => {
       const node = this.nodes.get(id);
       if (!node) return;
       if (maxDepth !== undefined && depth > maxDepth) return;
 
+      // Assign label for every node (even skipped hosts) so IDs stay stable
       const label = `@c${labelCounter++}`;
       this.labelToId.set(label, node.id);
       this.idToLabel.set(node.id, label);
 
-      const treeNode: TreeNode = {
-        id: node.id,
-        label,
-        displayName: node.displayName,
-        type: node.type,
-        key: node.key,
-        parentId: node.parentId,
-        children: node.children,
-        depth,
-      };
-      if (node.errors > 0) treeNode.errors = node.errors;
-      if (node.warnings > 0) treeNode.warnings = node.warnings;
-      result.push(treeNode);
+      // Check if this host node should be filtered out
+      // Never skip the explicitly requested subtree root
+      const skipThis = noHost && node.type === 'host' && !isSignificantHost(node)
+        && !(rootId !== undefined && id === rootId);
 
-      for (const childId of node.children) {
-        walk(childId, depth + 1);
+      if (skipThis) {
+        // Promote children to the effective parent at the same depth
+        for (const childId of node.children) {
+          walk(childId, depth, effectiveParentId);
+        }
+      } else {
+        // Record this node as a child of its effective parent
+        if (effectiveChildren) {
+          let siblings = effectiveChildren.get(effectiveParentId);
+          if (!siblings) {
+            siblings = [];
+            effectiveChildren.set(effectiveParentId, siblings);
+          }
+          siblings.push(node.id);
+        }
+
+        const treeNode: TreeNode = {
+          id: node.id,
+          label,
+          displayName: node.displayName,
+          type: node.type,
+          key: node.key,
+          parentId: rootId !== undefined && depth === 0 ? null : effectiveParentId,
+          children: node.children, // patched below when noHost
+          depth,
+        };
+        if (node.errors > 0) treeNode.errors = node.errors;
+        if (node.warnings > 0) treeNode.warnings = node.warnings;
+        result.push(treeNode);
+
+        for (const childId of node.children) {
+          walk(childId, depth + 1, node.id);
+        }
       }
     };
 
-    for (const rootId of this.roots) {
-      walk(rootId, 0);
+    if (rootId !== undefined) {
+      const rootNode = this.nodes.get(rootId);
+      if (rootNode) {
+        walk(rootId, 0, null);
+      }
+    } else {
+      for (const rid of this.roots) {
+        walk(rid, 0, null);
+      }
     }
+
+    // Patch children arrays to reflect filtered tree when noHost is active
+    if (effectiveChildren) {
+      for (const node of result) {
+        node.children = effectiveChildren.get(node.id) ?? [];
+      }
+    }
+
     return result;
   }
 
@@ -504,14 +569,15 @@ export class ComponentTree {
    * the labeled tree range.
    */
   resolveId(id: number | string): number | undefined {
-    if (typeof id === 'number') return id;
+    if (typeof id === 'number') return this.nodes.has(id) ? id : undefined;
     // Handle @c?(id:N) format for unresolved labels
     const match = id.match(/^@c\?\(id:(\d+)\)$/);
     if (match) return parseInt(match[1], 10);
     if (id.startsWith('@c')) return this.labelToId.get(id);
     // Try parsing as number
     const num = parseInt(id, 10);
-    return isNaN(num) ? undefined : num;
+    if (isNaN(num)) return undefined;
+    return this.nodes.has(num) ? num : undefined;
   }
 
   private toTreeNode(node: ComponentNode): TreeNode {

@@ -45,6 +45,21 @@ describe('formatTree', () => {
     expect(result).toContain('└─');
   });
 
+  it('should format a subtree (root has null parentId)', () => {
+    const nodes: TreeNode[] = [
+      { id: 5, label: '@c1', displayName: 'Header', type: 'function', key: null, parentId: null, children: [6, 7], depth: 0 },
+      { id: 6, label: '@c2', displayName: 'Nav', type: 'function', key: null, parentId: 5, children: [], depth: 1 },
+      { id: 7, label: '@c3', displayName: 'Logo', type: 'memo', key: null, parentId: 5, children: [], depth: 1 },
+    ];
+
+    const result = formatTree(nodes);
+    expect(result).toContain('@c1 [fn] Header');
+    expect(result).toContain('@c2 [fn] Nav');
+    expect(result).toContain('@c3 [memo] Logo');
+    expect(result).toContain('├─');
+    expect(result).toContain('└─');
+  });
+
   it('should show keys', () => {
     const nodes: TreeNode[] = [
       { id: 1, label: '@c1', displayName: 'List', type: 'function', key: null, parentId: null, children: [2], depth: 0 },
@@ -53,6 +68,109 @@ describe('formatTree', () => {
 
     const result = formatTree(nodes);
     expect(result).toContain('key=item-1');
+  });
+
+  it('should accept hint via options object', () => {
+    const result = formatTree([], { hint: 'custom hint' });
+    expect(result).toBe('No components (custom hint)');
+  });
+
+  it('should collapse repeated siblings', () => {
+    const children: number[] = [];
+    const nodes: TreeNode[] = [
+      { id: 1, label: '@c1', displayName: 'List', type: 'function', key: null, parentId: null, children: [], depth: 0 },
+    ];
+    // Add 6 TodoItem children
+    for (let i = 0; i < 6; i++) {
+      const childId = 10 + i;
+      children.push(childId);
+      nodes.push({
+        id: childId,
+        label: `@c${2 + i}`,
+        displayName: 'TodoItem',
+        type: 'function',
+        key: String(i + 1),
+        parentId: 1,
+        children: [],
+        depth: 1,
+      });
+    }
+    nodes[0].children = children;
+
+    const result = formatTree(nodes);
+    // Should show first 3 items
+    expect(result).toContain('@c2 [fn] TodoItem key=1');
+    expect(result).toContain('@c3 [fn] TodoItem key=2');
+    expect(result).toContain('@c4 [fn] TodoItem key=3');
+    // Should collapse the rest
+    expect(result).toContain('... +3 more TodoItem');
+    // Should NOT show the 4th, 5th, 6th items as individual lines
+    expect(result).not.toContain('@c5 [fn] TodoItem key=4');
+  });
+
+  it('should not collapse when siblings are 3 or fewer', () => {
+    const nodes: TreeNode[] = [
+      { id: 1, label: '@c1', displayName: 'List', type: 'function', key: null, parentId: null, children: [2, 3, 4], depth: 0 },
+      { id: 2, label: '@c2', displayName: 'Item', type: 'function', key: '1', parentId: 1, children: [], depth: 1 },
+      { id: 3, label: '@c3', displayName: 'Item', type: 'function', key: '2', parentId: 1, children: [], depth: 1 },
+      { id: 4, label: '@c4', displayName: 'Item', type: 'function', key: '3', parentId: 1, children: [], depth: 1 },
+    ];
+
+    const result = formatTree(nodes);
+    expect(result).not.toContain('more');
+    expect(result).toContain('@c2');
+    expect(result).toContain('@c3');
+    expect(result).toContain('@c4');
+  });
+
+  it('should show summary footer with totalCount', () => {
+    const nodes: TreeNode[] = [
+      { id: 1, label: '@c1', displayName: 'App', type: 'function', key: null, parentId: null, children: [], depth: 0 },
+    ];
+
+    const result = formatTree(nodes, { totalCount: 500 });
+    expect(result).toContain('1 components shown (500 total)');
+  });
+
+  it('should show simple count when all components are shown', () => {
+    const nodes: TreeNode[] = [
+      { id: 1, label: '@c1', displayName: 'App', type: 'function', key: null, parentId: null, children: [], depth: 0 },
+    ];
+
+    const result = formatTree(nodes, { totalCount: 1 });
+    expect(result).toContain('1 components');
+    expect(result).not.toContain('total');
+  });
+
+  it('should truncate output with maxLines', () => {
+    const nodes: TreeNode[] = [
+      { id: 1, label: '@c1', displayName: 'App', type: 'function', key: null, parentId: null, children: [2, 3, 4, 5, 6], depth: 0 },
+      { id: 2, label: '@c2', displayName: 'A', type: 'function', key: null, parentId: 1, children: [], depth: 1 },
+      { id: 3, label: '@c3', displayName: 'B', type: 'function', key: null, parentId: 1, children: [], depth: 1 },
+      { id: 4, label: '@c4', displayName: 'C', type: 'function', key: null, parentId: 1, children: [], depth: 1 },
+      { id: 5, label: '@c5', displayName: 'D', type: 'function', key: null, parentId: 1, children: [], depth: 1 },
+      { id: 6, label: '@c6', displayName: 'E', type: 'function', key: null, parentId: 1, children: [], depth: 1 },
+    ];
+
+    const result = formatTree(nodes, { maxLines: 3 });
+    const lines = result.split('\n');
+    // 3 content lines + truncation notice
+    expect(lines.length).toBeLessThanOrEqual(4);
+    expect(result).toContain('truncated at 3 lines');
+  });
+
+  it('should combine maxLines with totalCount footer', () => {
+    const nodes: TreeNode[] = [
+      { id: 1, label: '@c1', displayName: 'App', type: 'function', key: null, parentId: null, children: [2, 3, 4], depth: 0 },
+      { id: 2, label: '@c2', displayName: 'A', type: 'function', key: null, parentId: 1, children: [], depth: 1 },
+      { id: 3, label: '@c3', displayName: 'B', type: 'function', key: null, parentId: 1, children: [], depth: 1 },
+      { id: 4, label: '@c4', displayName: 'C', type: 'function', key: null, parentId: 1, children: [], depth: 1 },
+    ];
+
+    const result = formatTree(nodes, { maxLines: 3, totalCount: 100 });
+    // Truncation notice and total count are combined into one line (preserves content lines)
+    expect(result).toContain('truncated');
+    expect(result).toContain('100 total components');
   });
 });
 

@@ -109,8 +109,8 @@ describe('Connection health (e2e)', () => {
     expect(resp.hint).toBeDefined();
     expect(resp.hint).toContain('disconnected');
     expect(resp.hint).toContain('waiting for reconnect');
-    const nodes = resp.data as Array<unknown>;
-    expect(nodes.length).toBe(0);
+    const { nodes } = resp.data as { nodes: Array<unknown> };
+    expect(nodes).toHaveLength(0);
   });
 
   it('wait --connected should resolve immediately when already connected', async () => {
