@@ -27,7 +27,13 @@ jobs:
           node-version: '22'
 
       - name: Update npm for OIDC trusted publishing
-        run: npm install -g npm@11
+        run: |
+          curl -fsSL https://registry.npmjs.org/npm/-/npm-11.3.0.tgz -o /tmp/npm.tgz
+          npm_root="$(dirname "$(dirname "$(which npm)")")/lib/node_modules/npm"
+          tar -xzf /tmp/npm.tgz -C /tmp
+          rm -rf "$npm_root"
+          mv /tmp/package "$npm_root"
+          npm --version
 
       - name: Install dependencies
         run: bun install
