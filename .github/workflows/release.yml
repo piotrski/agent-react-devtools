@@ -25,7 +25,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          registry-url: 'https://registry.npmjs.org'
+
+      - name: Update npm for OIDC trusted publishing
+        run: npm install -g npm@11
 
       - name: Install dependencies
         run: bun install
@@ -56,12 +58,10 @@ jobs:
           createGithubReleases: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish canary snapshot
         if: steps.changesets.outputs.published != 'true'
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
         run: |
           git checkout ${{ github.sha }}
