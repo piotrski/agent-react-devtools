@@ -58,6 +58,8 @@ jobs:
 
       - name: Publish canary snapshot
         if: steps.changesets.outputs.published != 'true'
+        env:
+          NPM_CONFIG_PROVENANCE: true
         run: |
           git checkout ${{ github.sha }}
           bun install
