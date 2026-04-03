@@ -71,7 +71,7 @@ describe('Browser e2e', () => {
   it('get-tree returns real component hierarchy', async () => {
     const resp = await sendIpcCommand(socketPath, { type: 'get-tree' });
     expect(resp.ok).toBe(true);
-    const nodes = resp.data as Array<{ displayName: string; type: string; label: string }>;
+    const { nodes } = resp.data as { nodes: Array<{ displayName: string; type: string; label: string }> };
     expect(nodes.length).toBeGreaterThan(5);
 
     const names = nodes.map((n) => n.displayName);
