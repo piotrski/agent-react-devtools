@@ -13,9 +13,6 @@ const DEFAULT_STATE_DIR = path.join(
 );
 
 let STATE_DIR = DEFAULT_STATE_DIR;
-const PROFILE_READ_CANDIDATE_MULTIPLIER = 3;
-const PROFILE_READ_MIN_CANDIDATES = 20;
-const PROFILE_READ_MAX_CANDIDATES = 60;
 const PROFILE_READ_ENRICH_CONCURRENCY = 5;
 const PROFILE_READ_ENRICH_TIMEOUT_MS = 1000;
 
@@ -96,17 +93,6 @@ async function enrichProfileMetadataOnDemand(
       });
     }
   }));
-}
-
-function getCandidateLimit(limit?: number): number {
-  if (limit === undefined) return PROFILE_READ_MAX_CANDIDATES;
-  return Math.max(
-    limit,
-    Math.min(
-      PROFILE_READ_MAX_CANDIDATES,
-      Math.max(PROFILE_READ_MIN_CANDIDATES, limit * PROFILE_READ_CANDIDATE_MULTIPLIER),
-    ),
-  );
 }
 
 class Daemon {
@@ -352,18 +338,20 @@ class Daemon {
         }
 
         case 'profile-slow': {
-          const candidateLimit = getCandidateLimit(cmd.limit);
+          const requestedLimit = cmd.limit;
+          const candidateLimit = Math.max(requestedLimit ?? 10, cmd.candidateLimit ?? requestedLimit ?? 10);
           const candidates = this.profiler.getSlowest(this.tree, candidateLimit);
           await enrichProfileMetadataOnDemand(candidates, this.tree, this.bridge, this.profiler);
-          const slowest = this.profiler.getSlowest(this.tree, candidateLimit);
+          const slowest = this.profiler.getSlowest(this.tree, requestedLimit ?? candidateLimit);
           return { ok: true, data: slowest };
         }
 
         case 'profile-rerenders': {
-          const candidateLimit = getCandidateLimit(cmd.limit);
+          const requestedLimit = cmd.limit;
+          const candidateLimit = Math.max(requestedLimit ?? 10, cmd.candidateLimit ?? requestedLimit ?? 10);
           const candidates = this.profiler.getMostRerenders(this.tree, candidateLimit);
           await enrichProfileMetadataOnDemand(candidates, this.tree, this.bridge, this.profiler);
-          const rerenders = this.profiler.getMostRerenders(this.tree, candidateLimit);
+          const rerenders = this.profiler.getMostRerenders(this.tree, requestedLimit ?? candidateLimit);
           return { ok: true, data: rerenders };
         }
 
