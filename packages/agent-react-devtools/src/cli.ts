@@ -379,7 +379,7 @@ async function main(): Promise<void> {
       const limit = parseNumericFlag(flags, 'limit');
       const resp = await sendCommand({ type: 'profile-slow', limit });
       if (resp.ok) {
-        console.log(formatSlowest(resp.data as any));
+        console.log(formatSlowest(resp.data as any, limit));
       } else {
         console.error(resp.error);
         process.exit(1);
@@ -391,7 +391,7 @@ async function main(): Promise<void> {
       const limit = parseNumericFlag(flags, 'limit');
       const resp = await sendCommand({ type: 'profile-rerenders', limit });
       if (resp.ok) {
-        console.log(formatRerenders(resp.data as any));
+        console.log(formatRerenders(resp.data as any, limit));
       } else {
         console.error(resp.error);
         process.exit(1);

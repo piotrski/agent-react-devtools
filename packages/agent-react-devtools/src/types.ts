@@ -35,12 +35,27 @@ export interface InspectedElement {
   state: Record<string, unknown> | null;
   hooks: HookInfo[] | null;
   renderedAt: number | null;
+  source?: ComponentSourceLocation;
 }
 
 export interface HookInfo {
   name: string;
   value: unknown;
   subHooks?: HookInfo[];
+}
+
+export interface ComponentSourceLocation {
+  fileName: string;
+  lineNumber: number | null;
+  columnNumber: number | null;
+}
+
+export interface ProfileComponentMetadata {
+  label?: string;
+  type?: ComponentType;
+  path?: string;
+  source?: ComponentSourceLocation;
+  sourceKey?: string;
 }
 
 // ── Profiling ──
@@ -52,6 +67,7 @@ export interface ProfilingSession {
   commits: ProfilingCommit[];
   /** Raw per-root data from React DevTools, stored for export passthrough. */
   rawRoots: ProfilingRootRawData[];
+  componentMetadata: Map<number, ProfileComponentMetadata>;
 }
 
 export interface ProfilingCommit {
@@ -95,6 +111,9 @@ export interface ComponentRenderReport {
   displayName: string;
   label?: string;
   type?: ComponentType;
+  path?: string;
+  source?: ComponentSourceLocation;
+  sourceKey?: string;
   renderCount: number;
   totalDuration: number;
   avgDuration: number;
